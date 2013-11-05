@@ -1,5 +1,5 @@
 # Build files.
-stage1
+/stage1
 
 *.o
 *.d
