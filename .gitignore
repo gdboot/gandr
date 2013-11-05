@@ -1,0 +1,10 @@
+# Build files.
+stage1
+
+*.o
+*.d
+
+# Text editor files.
+*.sublime-*
+
+tools/
