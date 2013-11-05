@@ -6,7 +6,7 @@ include rules.mk
 CFLAGS += -std=c99 -Wall -Wextra -nostdlib -ffreestanding -lgcc $(CCFLAGS)
 
 # Pre-processor flags.
-CPPFLAGS := -D$(shell tr '[:lower:]' '[:upper:]' <<< $(BOOT_DEVICE))
+CPPFLAGS := -D$(shell echo "$(BOOT_DEVICE)" | tr '[:lower:]' '[:upper:]')
 
 # Stage 1.
 STAGE1_SRC := $(shell find bal/platform/$(PLATFORM)/stage1 -type f -name "*.S") \

@@ -3,7 +3,7 @@
  */
 
 .code16
-.text
+.section base.start
 
 /*
  * Entry point.
@@ -20,13 +20,13 @@ reset_cs:
 
     // Set the stack.
     mov %ax, %ss
-    mov $_start, %sp                   
+    mov $_start, %sp
 
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
-    
+
     // Set mode (ah = 0x00) to 80*25 text mode (al = 0x03).
     mov $0x0003, %ax
     int $0x10

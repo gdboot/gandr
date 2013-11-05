@@ -5,6 +5,7 @@ SECTIONS
 {
     .base 0x7C00 :
     {
+        KEEP(*(.base.start))
         *(.base)
     }
 
@@ -22,7 +23,7 @@ SECTIONS
 
     .data :
     {
-        *(.data)                                                                                             
+        *(.data)
     }
 
     .signature 0x8FF8 :
