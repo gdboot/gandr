@@ -3,16 +3,15 @@ ENTRY(_start)
 
 SECTIONS
 {
-    .base 0x7C00 :
+    base 0x7C00 :
     {
-        KEEP(*(.base.start))
-        *(.base)
+        KEEP(*(base.start))
+        *(base)
     }
 
-    .boot_signature 0x7DFC :
+    boot_signature 0x7DFC :
     {
-        boot_signature = .;
-        *(.boot_signature)
+        *(boot_signature)
     }
 
     .text :
@@ -26,10 +25,9 @@ SECTIONS
         *(.data)
     }
 
-    .signature 0x8FF8 :
+    signature 0x8FF8 :
     {
-        signature = .;
-        *(.signature)
+        *(signature)
     }
 
     end = .;

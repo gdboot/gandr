@@ -1,5 +1,5 @@
 /*
- * Stage 1 (disk independent) initialization code.
+ * Stage 1 (disk dependent, firmware dependent) initialization code.
  */
 
 .code16
