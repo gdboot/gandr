@@ -1,34 +1,34 @@
 OUTPUT_FORMAT("binary")
 ENTRY(_start)
-
+ 
 SECTIONS
 {
-    base 0x7C00 :
+    .text 0x7C00 :
     {
-        KEEP(*(base.start))
+        *(base.start)
         *(base)
     }
-
-    boot_signature 0x7DFC :
+ 
+    .data 0x7DFC :
     {
         *(boot_signature)
     }
-
+ 
     .text :
     {
         *(.text)
         *(.rodata)
     }
-
+ 
     .data :
     {
         *(.data)
     }
-
-    signature 0x8FF8 :
+ 
+    .data 0x8FF8 :
     {
         *(signature)
     }
-
+ 
     end = .;
 }
