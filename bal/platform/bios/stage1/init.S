@@ -18,7 +18,7 @@ _start:
 reset_cs:
     xor %ax, %ax
 
-    // Set the stack.
+    // Set the stack just below where we start.
     mov %ax, %ss
     mov $_start, %sp
 
@@ -30,6 +30,8 @@ reset_cs:
     // Set mode (ah = 0x00) to 80*25 text mode (al = 0x03).
     mov $0x0003, %ax
     int $0x10
+    
+    call output_init
 
     .hlt:
         hlt

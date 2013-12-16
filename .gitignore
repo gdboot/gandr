@@ -3,8 +3,12 @@
 
 *.o
 *.d
+*.flp
 
 # Text editor files.
 *.sublime-*
 
 tools/
+
+.bochsrc
+bochsout.txt

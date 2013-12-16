@@ -9,7 +9,7 @@ SECTIONS
         *(base)
     }
  
-    .data 0x7DFC :
+    .data 0x7DFE :
     {
         *(boot_signature)
     }
