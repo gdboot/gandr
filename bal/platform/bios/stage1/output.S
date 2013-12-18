@@ -93,10 +93,7 @@ hexadecimal_buffer:
  */
 .global output_hexadecimal
 output_hexadecimal:
-    push %ecx
-    push %ebx
-    push %si
-    push %di
+    pushal
 
     mov $8, %ecx
     // +2 for the 0x part; + 7 to reach last byte.
@@ -126,8 +123,5 @@ output_hexadecimal:
         mov $hexadecimal_buffer, %si
         call output_string
 
-    pop %di
-    pop %si
-    pop %ebx
-    pop %ecx
+    popal
     ret

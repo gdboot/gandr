@@ -29,7 +29,7 @@ reset_cs:
 
     mov %ax, %ds
 
-    call disk_init
+    call storage_init
 
     mov %ax, %es
     mov %ax, %fs
