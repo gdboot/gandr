@@ -23,11 +23,11 @@ WORKING_DIR=$(pwd)
 # Get the tools.
 
 # Binutils.
-echo -n "  [WGET]  $PREFIX/binutils-2.23.2.tar.bz2,    "
+echo -n "  [WGET]  $PREFIX/binutils-2.23.2.tar.bz2,     "
 download "http://ftp.gnu.org/gnu/binutils/binutils-2.23.2.tar.bz2"
 
 # GCC.
-echo -n "  [WGET]  $PREFIX/gcc-4.8.2.tar.bz2,    "
+echo -n "  [WGET]  $PREFIX/gcc-4.8.2.tar.bz2,     "
 download "http://ftp.gnu.org/gnu/gcc/gcc-4.8.2/gcc-4.8.2.tar.bz2"
 
 # Untar them.
