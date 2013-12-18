@@ -8,45 +8,45 @@
  */
 
 typedef struct {
-	volatile void *base;
+    volatile void *base;
 } gio_addr;
 
 #define GIO_MMIO_ADDR(_addr) ((gio_addr){ (void*) (_addr) })
 
 static inline void gio_write8_offset(gio_addr addr, size_t offs, uint8_t val)
 {
-	volatile uint8_t *ptr = ((volatile uint8_t*) addr.base) + offs;
-	*ptr = val;
+    volatile uint8_t *ptr = ((volatile uint8_t*) addr.base) + offs;
+    *ptr = val;
 }
 
 static inline void gio_write16_offset(gio_addr addr, size_t offs, uint16_t val)
 {
-	volatile uint16_t *ptr = (volatile uint16_t*) (((volatile char*)addr.base) + offs);
-	*ptr = val;
+    volatile uint16_t *ptr = (volatile uint16_t*) (((volatile char*)addr.base) + offs);
+    *ptr = val;
 }
 
 static inline void gio_write32_offset(gio_addr addr, size_t offs, uint32_t val)
 {
-	volatile uint32_t *ptr = (volatile uint32_t*) (((volatile char*)addr.base) + offs);
-	*ptr = val;
+    volatile uint32_t *ptr = (volatile uint32_t*) (((volatile char*)addr.base) + offs);
+    *ptr = val;
 }
 
 static inline uint8_t gio_read8_offset(gio_addr addr, size_t offs)
 {
-	volatile uint8_t *ptr = ((volatile uint8_t*) addr.base) + offs;
-	return *ptr;
+    volatile uint8_t *ptr = ((volatile uint8_t*) addr.base) + offs;
+    return *ptr;
 }
 
 static inline uint16_t gio_read16_offset(gio_addr addr, size_t offs)
 {
-	volatile uint16_t *ptr = (volatile uint16_t*) (((volatile char*)addr.base) + offs);
-	return *ptr;
+    volatile uint16_t *ptr = (volatile uint16_t*) (((volatile char*)addr.base) + offs);
+    return *ptr;
 }
 
 static inline uint32_t gio_read32_offset(gio_addr addr, size_t offs)
 {
-	volatile uint32_t *ptr = (volatile uint32_t*) (((volatile char*)addr.base) + offs);
-	return *ptr;
+    volatile uint32_t *ptr = (volatile uint32_t*) (((volatile char*)addr.base) + offs);
+    return *ptr;
 }
 
 static inline void gio_write8_index(gio_addr addr, size_t idx, uint8_t val)
