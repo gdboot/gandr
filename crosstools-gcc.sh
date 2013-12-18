@@ -4,12 +4,9 @@
 download()
 {
     local url=$1
-    
+
     # Download the file.
     wget  --progress=dot -c -P $PREFIX $url 2>&1 | grep "%" | sed -u -e "s,\.,,g" -e "s,\,,,g" | awk '{printf("\b\b\b\b%4s", $2)}'
-
-    # Delete everything and show done.
-    echo -ne "\b\b\b\b"
     echo " [DONE]"
 }
 
