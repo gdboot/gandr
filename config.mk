@@ -12,7 +12,7 @@ ARCH     ?= x86
 # Boot device.
 # Allowed boot devices:
 #     [bios] device: el-torito, floppy, pxe.
-BOOT_DEVICE ?= floppy
+BOOT_DEVICE ?= pxe
 
 # C flags.
 CFLAGS   := -O2

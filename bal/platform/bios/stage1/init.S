@@ -18,25 +18,29 @@ _start:
 reset_cs:
     xor %ax, %ax
 
+#ifndef BD_PXE
     // Set the stack just below where we start.
+    // For PXE, the stack has already been set up.
     mov %ax, %ss
     mov $_start, %sp
+#endif
+
+    call output_init
 
     mov %ax, %ds
+
+    call disk_init
+
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
-
-    // Set mode (ah = 0x00) to 80*25 text mode (al = 0x03).
-    mov $0x0003, %ax
-    int $0x10
-    
-    call output_init
 
     .hlt:
         hlt
         jmp .hlt
 
+#ifdef BD_FLOPPY
 // The boot signature.
 .section boot_signature
     .word 0xAA55
+#endif

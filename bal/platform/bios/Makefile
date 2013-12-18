@@ -6,10 +6,10 @@ include rules.mk
 CFLAGS += -std=c99 -Wall -Wextra -nostdlib -ffreestanding -lgcc $(CCFLAGS)
 
 # Pre-processor flags.
-CPPFLAGS := -D$(shell echo "$(BOOT_DEVICE)" | tr '[:lower:]' '[:upper:]')
+CPPFLAGS := -D$(shell echo "BD_$(BOOT_DEVICE)" | tr '[:lower:]' '[:upper:]')
 
 # Stage 1.
-STAGE1_SRC := $(shell find bal/platform/$(PLATFORM)/stage1 -type f -name "*.S") \
+STAGE1_SRC := $(shell ls bal/platform/$(PLATFORM)/stage1/*.S) \
 			  $(shell find bal/platform/$(PLATFORM)/stage1/$(BOOT_DEVICE) -type f -name "*.S")
 
 # Get the object files.

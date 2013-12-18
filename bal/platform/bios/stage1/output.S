@@ -12,6 +12,10 @@
 output_init:
     pushal
     push %es
+
+    // Set mode (ah = 0x00) to 80*25 text mode (al = 0x03).
+    mov $0x0003, %ax
+    int $0x10
    
     // Point es to video memory.
     mov $0xB800, %ax
@@ -98,7 +102,7 @@ output_hexadecimal:
     // +2 for the 0x part; + 7 to reach last byte.
     mov $hexadecimal_buffer + 2 + 7, %di
     movl $0x30303030, -3(%di)
-    movl $0x30303030, -3(%di)
+    movl $0x30303030, -7(%di)
 
     .loop_digits:
         // Get the lower 4 bits.
