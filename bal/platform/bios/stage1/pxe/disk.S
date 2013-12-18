@@ -6,7 +6,7 @@
 .data
 
 // The PXE API pointer.
-pxe_api:
+pxe_api_addr:
     .offset:    .word 0
     .segment:   .word 0
 
@@ -16,6 +16,24 @@ pxe_flags:
     .byte 0
 
 .text
+
+/*
+ * Call the PXE API (both before 2.1 and after).
+ *     ds:di -> the address of the input buffer.
+ *     bx -> the "opcode".
+ */
+pxe_api:
+    // NOTE: 
+    // The above registers are what the legacy API also used.
+    // And we push it over here, so that we have no problems with the new API.
+    push %ds
+    push %di
+    push %bx
+    
+    lcall (pxe_api_addr)
+    
+    add $6, %sp
+    ret
 
 /*
  * Initialize PXE.
@@ -64,7 +82,7 @@ disk_init:
     .pxenv:
         mov %es:0x0A(%bx), %ecx
 
-        mov %ecx, (pxe_api)
+        mov %ecx, (pxe_api_addr)
         jmp .return
 
     .new_version:
@@ -98,7 +116,7 @@ disk_init:
 
         mov %es:0x10(%bx), %ecx
 
-        mov %ecx, (pxe_api)
+        mov %ecx, (pxe_api_addr)
         orb $PXE_NEW_PRESENT, (pxe_flags)
 
         // Restore es and bx.
