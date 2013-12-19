@@ -38,9 +38,3 @@ reset_cs:
     .hlt:
         hlt
         jmp .hlt
-
-#ifdef BD_FLOPPY
-// The boot signature.
-.section boot_signature
-    .word 0xAA55
-#endif

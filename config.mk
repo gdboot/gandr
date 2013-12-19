@@ -11,7 +11,7 @@ ARCH     ?= x86
 
 # Boot device.
 # Allowed boot devices:
-#     [bios] device: eltorito, floppy, pxe.
+#     [bios] device: eltorito, pxe.
 BOOT_DEVICE ?= pxe
 
 # C flags.
