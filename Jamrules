@@ -1,0 +1,194 @@
+NOARSCAN = true ;
+ALL_LOCATE_TARGET ?= build ;
+
+# Save the host toolset information
+
+HOST_TOOLSET    = $(TOOLSET) ;
+HOST_AS         = $(AS) ;
+HOST_AR         = $(AR) ;
+HOST_CC         = $(CC) ;
+HOST_CCFLAGS    = $(CCFLAGS) ;
+HOST_C++        = $(C++)     ;
+HOST_C++FLAGS   = $(C++FLAGS) ;
+HOST_LINK       = $(LINK) ;
+HOST_LINKFLAGS  = $(LINKFLAGS) ;
+HOST_LINKLIBS   = $(LINKLIBS) ;
+HOST_OPTIM      = $(OPTIM) ;
+HOST_STDHDRS    = $(STDHDRS) ;
+HOST_SUFEXE     = $(SUFEXE) ;
+HOST_SUFLIB     = $(SUFLIB) ;
+HOST_SUFOBJ     = $(SUFOBJ) ;
+HOST_UNDEFFLAG  = $(UNDEFFLAG) ;
+HOST_PICFLAGS   = $(PICFLAG) ;
+
+# Include a file once
+rule SubIncludeOnce {
+    if ! $($(1:J=__)_INCLUDED) {
+        #ECHO Including $(1) ;
+        SubInclude $(1) ;
+    } else {
+        #ECHO Not including $(1) ;
+    }
+}
+
+# Set the flag that SubIncludeOnce uses
+rule _SubSetIncluded {
+    #ECHO Included $(1) ;
+    if ! $($(1:J=__)_INCLUDED) {
+        $(1:J=__)_INCLUDED = 1 ;
+    }
+}
+
+# JamBase invokes all rules specified in SUBDIRRULES when a new subdir is 
+# entered
+SUBDIRRULES += _SubSetIncluded ;
+
+# Adds Bal source files
+rule GandalfBalSources {
+    ECHO LOCATE_TARGET $(LOCATE_TARGET) ;
+    local _obj = $(1:S=$(SUFOBJ)) ;
+    MakeLocate $(_obj) : $(LOCATE_TARGET) ;
+    GANDALF_BAL_OBJECTS += [ FGristFiles $(_obj) ] ;
+    Objects $(1) ;
+    ObjectHdrs $(1) : $(GANDALF_INCLUDE_DIRS) ;
+}
+
+## ObjCopy
+# ObjCopy dest : src : opts ;
+rule ObjCopy {
+    Depends $(<) : $(>) ;
+    MakeLocate $(<) : $(LOCATE_TARGET) ;
+}
+
+actions ObjCopy {
+    $(OBJCOPY) $(3) $(>) $(<)
+}
+
+# Add an include dir (Config.jam) 
+# GandalfIncludeDir $(GANDALF_TOP) dir dir dir ;
+rule GandalfIncludeDir {
+    GANDALF_INCLUDE_DIRS += [ FDirName $(1) ] ;
+}
+
+# Link using a linker script
+# LinkWithScript output : objects : script ;
+rule LinkWithScript {
+    # Can't use MainFromObjects as it regrists the files
+    Depends $(<) : $(>) $(2) ;
+    MakeLocate $(<) : $(LOCATE_TARGET) ;
+    Clean clean : $(<) ;
+    ECHO Script $(3) ;
+    LINKFLAGS on $(<) += -T$(3) ;
+}
+
+# We also generate output useful for debugging
+actions LinkWithScript bind NEEDLIBS {
+    $(LINK) $(LINKFLAGS) -o $(<) $(UNDEFS) $(>) $(NEEDLIBS) $(LINKLIBS)
+    $(OBJDUMP) -C -t $(<) > $(<:S=.syms.txt)
+    $(OBJDUMP) -C -S $(<) > $(<:S=.dsm.txt)
+    $(OBJCOPY) --only-keep-debug $(<) $(<:S=.gdb)
+    $(STRIP) --strip-debug $(<)
+    $(OBJCOPY) --add-gnu-debuglink=$(<:S=.gdb) $(<)
+}
+
+# Add support to Jam for .S preprocessed assembly files
+
+# Doesn't recognize S: preprocessed assembly file
+rule UserObject {
+    switch $(>:S) {
+        case .S :   AsCpp $(<) : $(>) ;
+    }
+}
+
+# Add support for preprocessed assembly
+rule AsCpp
+{
+    Depends $(<) : $(>) ;
+
+    ASFLAGS on $(<) += $(ASFLAGS) $(SUBDIRASFLAGS) ;
+
+    ASHDRS on $(<) = [ on $(<) FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS) ] ;
+    ASDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
+}
+
+# Pass them to GCC
+actions AsCpp
+{
+    $(CC) -c $(ASFLAGS) $(ASHDRS) $(ASDEFS) -o $(<) $(>)
+}
+
+# Determine the platform, soc, arch information
+# Do so in that order; platform can imply soc can imply arch
+
+# XXX These paths may need consideration once we have KL!
+
+GANDALF_INCLUDE_DIRS = [ FDirName $(GANDALF_TOP) include ] ;
+
+if ! $(PLATFORM) {
+    ECHO "Must specify a platform" ;
+    EXIT ;
+} else {
+    include [ FDirName $(GANDALF_TOP) bal platform $(PLATFORM) Config.jam ] ;
+}
+
+# SoC specification is optional (e.g: i386-bios doesnt' need nor want one)
+if $(SOC) {
+	include [ FDirName $(GANDALF_TOP) bal soc $(SOC) Config.jam ] ;
+}
+
+if ! $(ARCH) {
+    ECHO "Must specify an architecture " ;
+    ECHO "Platform supports: " $(SUPPORTED_ARCHITECTURES:J=", ") ;
+    EXIT ;
+} else if ! $(ARCH) in $(SUPPORTED_ARCHITECTURES) {
+    ECHO "Architecture \"$(ARCH)\" not supported by $(PLATFORM)" ;
+    ECHO "Supported architectures are: " $(SUPPORTED_ARCHITECTURES:J=", ") ;
+    EXIT ;
+} else {
+    include [ FDirName $(GANDALF_TOP) bal arch $(ARCH) Config.jam ] ;
+}
+
+# All of our toolchains are GCC-alikes
+TOOLSET = gcc ;
+CCFLAGS  += -ffreestanding -g -std=c99 ;
+C++FLAGS += -ffreestanding -g -std=c++0x ;
+
+AS         = $(TOOLPREFIX)as ;
+AR         = $(TOOLPREFIX)ar cru ;
+CC         = $(TOOLPREFIX)gcc ;
+OPTIM      = -Os ;
+C++        = $(TOOLPREFIX)g++ ;
+LINK       = $(TOOLPREFIX)ld ;
+STDHDRS    = ;
+SUFEXE     = ;
+SUFLIB     = .a ;
+SUFOBJ     = .o ;
+UNDEFFLAG  = -U ;
+PICFLAGS   = -fPIC ;
+OBJDUMP    = $(TOOLPREFIX)objdump ;
+OBJCOPY    = $(TOOLPREFIX)objcopy ;
+STRIP      = $(TOOLPREFIX)strip ;
+
+# Work around a bug in Jambase
+# XXX This should go into ejam
+
+# Fix to work on targets in subdirs
+rule MakeLocate
+{
+    # Note we grist the directory name with 'dir',
+    # so that directory path components and other
+    # targets don't conflict.
+
+    if $(>)
+    {
+        local _rev = [ FReverse $(>) ] ;
+        if $(_rev[1]) = "." {
+          _rev = $(_rev[2-]) ;
+        } 
+        local _dir = [ FDirName [ FReverse $(_rev) ] $(<[0]:D) ] ;
+
+        LOCATE on $(<) = [ FDirName $(>) ] ;
+        Depends $(<) : $(_dir:G=dir) ;
+        MkDir $(_dir:G=dir) ;
+    }
+}

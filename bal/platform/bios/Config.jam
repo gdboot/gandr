@@ -1,0 +1,34 @@
+GandalfIncludeDir $(GANDALF_TOP) include platform bios ;
+SUPPORTED_ARCHITECTURES = 
+    ia32 
+    amd64 
+    ;
+
+# BiosStage1 output : name ;
+rule BiosStage1 {
+    # Specific sources
+    local specific_srcs =  [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1 $(2) ] : *.S ] ;
+
+    ECHO LOCATE_TARGET $(LOCATE_TARGET) ;
+
+    # General objects
+    local objs = ;
+    for src in [ FGristFiles $(STAGE1_SRCS) ] {
+        local obj = $(src:D=$(2):S=$(SUFOBJ)) ;
+        Object $(obj) : $(src) ;
+        MakeLocate $(obj) : $(LOCATE_TARGET) ;
+        objs += $(obj) ;
+    }
+
+    # Specific objects
+    for src in [ FGristFiles $(specific_srcs) ] {
+        local obj = $(src:D=$(2):S=$(SUFOBJ)) ;
+        Object $(obj) : $(src) ;
+        MakeLocate $(obj) : $(LOCATE_TARGET) ;
+        objs += $(obj) ;
+    }
+
+    LinkWithScript $(<).elf : $(objs) : [ FDirName $(GANDALF_TOP) bal platform bios stage1 link.ld ] ;
+    ObjCopy $(<) : $(<).elf : -O binary ;
+    DEPENDS exe : $(<) ; 
+}

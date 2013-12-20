@@ -1,0 +1,13 @@
+SubDir GANDALF_TOP bal ;
+
+GandalfBalSources
+    gio.c
+    ;
+
+
+# Include arch, soc, platform headers
+SubIncludeOnce GANDALF_TOP bal arch $(ARCH) ;
+if $(SOC) {
+    SubIncludeOnce GANDALF_TOP bal soc $(SOC) ;
+}
+SubIncludeOnce GANDALF_TOP bal platform $(PLATFORM) ;
