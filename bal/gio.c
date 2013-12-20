@@ -1,4 +1,4 @@
-#include <gio.h>
+#include <bal/gio.h>
 
 void gio_write_index(size_t size, gio_addr base, size_t index, size_t value)
 {
