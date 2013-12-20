@@ -30,7 +30,7 @@ pxe_api:
     push %di
     push %bx
     
-    lcall (pxe_api_addr)
+    lcall *(pxe_api_addr)
     
     add $6, %sp
     ret
@@ -42,8 +42,8 @@ pxe_api:
  *
  * Trashes bp.
  */
-.global disk_init
-disk_init:
+.global storage_init
+storage_init:
     // Save sp + 4.
     mov %sp, %bp
     add $4, %bp

@@ -29,7 +29,7 @@ reset_cs:
 
     mov %ax, %ds
 
-    call disk_init
+    call storage_init
 
     mov %ax, %es
     mov %ax, %fs
@@ -38,9 +38,3 @@ reset_cs:
     .hlt:
         hlt
         jmp .hlt
-
-#ifdef BD_FLOPPY
-// The boot signature.
-.section boot_signature
-    .word 0xAA55
-#endif

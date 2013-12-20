@@ -8,6 +8,9 @@
 # Text editor files.
 *.sublime-*
 
+# Kdevelop project files
+*.kdev*
+
 tools/
 
 .bochsrc
