@@ -74,10 +74,9 @@ rule GandalfIncludeDir {
 # LinkWithScript output : objects : script ;
 rule LinkWithScript {
     # Can't use MainFromObjects as it regrists the files
-    Depends $(<) : $(>) $(2) ;
+    Depends $(<) : $(>) $(3) ;
     MakeLocate $(<) : $(LOCATE_TARGET) ;
     Clean clean : $(<) ;
-    ECHO Script $(3) ;
     LINKFLAGS on $(<) += -T$(3) ;
 }
 
