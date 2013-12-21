@@ -3,15 +3,7 @@ SubDir GANDALF_TOP bal platform bios ;
 # Pre-processor flags.
 # CPPFLAGS := -D$(shell echo "BD_$(BOOT_DEVICE)" | tr '[:lower:]' '[:upper:]')
 
-# General stage 1 sources
-STAGE1_SRCS = [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1 ] : *.S ] ;
 
-# List of stage 1s:
-STAGE1_LIST =
-    pxe
-    ;
 
-for stage1 in $(STAGE1_LIST) {
-    local output = stage1_$(stage1) ;
-    BiosStage1 $(output) : $(stage1) ;
-}
+SubIncludeOnce GANDALF_TOP bal platform bios stage1 ;
+SubIncludeOnce GANDALF_TOP bal platform bios stage1.5 ;
