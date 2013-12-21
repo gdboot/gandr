@@ -12,6 +12,7 @@
 *.kdev*
 
 tools/
+build/
 
 .bochsrc
 bochsout.txt
