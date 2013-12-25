@@ -9,6 +9,6 @@ STAGE1_LIST =
     ;
 
 for stage1 in $(STAGE1_LIST) {
-    local output = stage1_$(stage1) ;
+    local output = [ FDirName $(stage1) stage1_$(stage1) ] ;
     BiosStage1 $(output) : $(stage1) ;
 }

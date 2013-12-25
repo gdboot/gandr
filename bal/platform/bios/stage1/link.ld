@@ -24,7 +24,7 @@ SECTIONS
         *(.data)
     }
  
-    .data 0x8FF8 :
+    .data 0xAFF8 :
     {
         *(signature)
     }

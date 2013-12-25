@@ -4,7 +4,6 @@ GandalfBalSources
     gio.c
     ;
 
-
 # Include arch, soc, platform headers
 SubIncludeOnce GANDALF_TOP bal arch $(ARCH) ;
 if $(SOC) {

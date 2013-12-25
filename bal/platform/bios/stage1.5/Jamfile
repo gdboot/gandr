@@ -1,9 +1,9 @@
 SubDir GANDALF_TOP bal platform bios stage1.5 ;
 
 local s15_sources = [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1.5 ] : *.S ] ;
-local s15_objects = $(s15_sources:S=$(SUFOBJ))
+local s15_objects = $(s15_sources:S=$(SUFOBJ)) ;
 Objects $(s15_sources) ;
 MakeLocate $(s15_objects) : $(LOCATE_TARGET) ;
 
-LinkWithScript gandalf.b16 : $(s15_objects) : link.ld ;
+LinkWithScript gandalf.b16 : $(s15_objects) : [ FDirName $(GANDALF_TOP) bal platform bios stage1.5 link.ld ] ;
 DEPENDS exe : gandalf.b16 ;
