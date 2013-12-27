@@ -16,10 +16,10 @@ SECTIONS
 
     .bss :
     {
-        bss_start = .;
+        _bss_start = .;
         *(.bss)
-        bss_end = .;
+        _bss_end = .;
     }
 
-    end = .;
+    _end = .;
 }
