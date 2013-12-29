@@ -58,10 +58,11 @@ rule GandalfBalSources {
 rule ObjCopy {
     Depends $(<) : $(>) ;
     MakeLocate $(<) : $(LOCATE_TARGET) ;
+    OPTS on $(<) = $(3) ;
 }
 
 actions ObjCopy {
-    $(OBJCOPY) -O binary $(>) $(<)
+    $(OBJCOPY) $(OPTS) $(>) $(<)
 }
 
 # Add an include dir (Config.jam) 
