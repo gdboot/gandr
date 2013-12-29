@@ -61,7 +61,7 @@ rule ObjCopy {
 }
 
 actions ObjCopy {
-    $(OBJCOPY) $(3) $(>) $(<)
+    $(OBJCOPY) -O binary $(>) $(<)
 }
 
 # Add an include dir (Config.jam) 

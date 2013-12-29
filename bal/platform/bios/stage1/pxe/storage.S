@@ -6,6 +6,7 @@
 .data
 
 // The PXE API pointer.
+.align 4
 pxe_api_addr:
     .offset:    .word 0
     .segment:   .word 0
@@ -14,6 +15,48 @@ pxe_api_addr:
 
 pxe_flags:
     .byte 0
+
+#define UNDI_SHUTDOWN   0x05
+#define UNLOAD_STACK    0x70
+#define STOP_UNDI       0x15
+#define UNDI_CLEANUP    0x02
+
+#define GET_CACHED_INFO 0x71
+#define TFTP_OPEN       0x20
+#define TFTP_CLOSE      0x21
+#define TFTP_READ       0x22
+#define TFTP_GET_FSIZE  0x25
+
+// The PXENV_GET_CACHED_INFO structure.
+    .struct 0
+cached_info_status:
+    .struct cached_info_status + 2
+cached_info_packet_type:
+    .struct cached_info_packet_type + 2
+cached_info_buffer_off:
+    .struct cached_info_buffer_off + 2
+cached_info_buffer_seg:
+    .struct cached_info_buffer_seg + 2
+cached_info_buffer_limit:
+    .struct cached_info_buffer_limit + 2
+cached_info_sip:
+    .struct cached_info_sip + 4
+cached_info_gip:
+
+.data
+
+// The PXENV_GET_CACHED_INFO structure.
+pxe_cached_info:
+    .status:                .word 0
+    .packet_type:           .word 2
+    .buffer_size:           .word 0
+        .buffer_offset:     .word 0  // Zero implies PXE uses own buffer.
+        .buffer_segment:    .word 0
+    .buffer_limit:          .word 0
+    
+    // Not part of actual PXENV_GET_CACHED_INFO structure.
+    .sip:                   .long 0
+    .gip:                   .long 0
 
 .text
 
@@ -83,7 +126,7 @@ storage_init:
         mov %es:0x0A(%bx), %ecx
 
         mov %ecx, (pxe_api_addr)
-        jmp .return
+        jmp .cached_info
 
     .new_version:
         // Save es and bx, in case we need to switch back to PXENV.
@@ -123,6 +166,36 @@ storage_init:
         pop %bx
         pop %es
 
+    // Get cached info.
+    .cached_info:
+        // %es:di points to the pxe_cached_info structure.
+        xor %ax, %ax
+        mov %ax, %es
+        mov $pxe_cached_info, %di
+
+        mov $GET_CACHED_INFO, %bx
+
+        call pxe_api
+
+        or (pxe_cached_info), %ax
+        jnz .error_get_cached_info
+
+        // Store the SIP & GIP over.
+        mov pxe_cached_info + cached_info_sip, %di
+
+        mov (pxe_cached_info + cached_info_buffer_off), %si
+        add $20, %si        // Offset to the SIP and GIP.
+
+        push %ds
+
+        mov (pxe_cached_info + cached_info_buffer_seg), %ax
+        mov %ax, %ds
+
+        movsl /* SIP */
+        movsl /* GIP */
+
+        pop %ds
+
     .return:
         popal
         ret
@@ -133,6 +206,7 @@ storage_init:
         pop %es
         jmp .pxenv
 
+    .error_get_cached_info:
     .error_no_pxe:
         /* TODO: ERROR HANDLING. */
         hlt

@@ -29,6 +29,6 @@ rule BiosStage1 {
     }
 
     LinkWithScript $(<).elf : $(objs) : [ FDirName $(GANDALF_TOP) bal platform bios stage1 link.ld ] ;
-    ObjCopy $(<) : $(<).elf : -O binary ;
+    ObjCopy $(<) : $(<).elf ;
     DEPENDS exe : $(<) ; 
 }
