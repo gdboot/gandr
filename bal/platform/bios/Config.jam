@@ -9,8 +9,6 @@ rule BiosStage1 {
     # Specific sources
     local specific_srcs =  [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1 $(2) ] : *.S ] ;
 
-    ECHO LOCATE_TARGET $(LOCATE_TARGET) ;
-
     # General objects
     local objs = ;
     for src in [ FGristFiles $(STAGE1_SRCS) ] {

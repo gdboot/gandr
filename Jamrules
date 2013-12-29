@@ -45,7 +45,6 @@ SUBDIRRULES += _SubSetIncluded ;
 
 # Adds Bal source files
 rule GandalfBalSources {
-    ECHO LOCATE_TARGET $(LOCATE_TARGET) ;
     local _obj = $(1:S=$(SUFOBJ)) ;
     MakeLocate $(_obj) : $(LOCATE_TARGET) ;
     GANDALF_BAL_OBJECTS += [ FGristFiles $(_obj) ] ;

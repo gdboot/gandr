@@ -1,9 +1,15 @@
 SubDir GANDALF_TOP bal platform bios stage1.5 ;
 
+# Find the sources
 local s15_sources = [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1.5 ] : *.S ] ;
-local s15_objects = $(s15_sources:S=$(SUFOBJ)) ;
-Objects $(s15_sources) ;
+# Erase the directory information (its' redundant)
+s15_sources = $(s15_sources:D=) ;
+
+# Get the object file name (we need to manually grist because LWS intentionally doesn't)
+local s15_objects = [ FGristFiles $(s15_sources:S=$(SUFOBJ)) ] ;
 MakeLocate $(s15_objects) : $(LOCATE_TARGET) ;
 
+# Here be the objects
+Objects $(s15_sources) ;
 LinkWithScript gandalf.b16 : $(s15_objects) : [ FDirName $(GANDALF_TOP) bal platform bios stage1.5 link.ld ] ;
 DEPENDS exe : gandalf.b16 ;
