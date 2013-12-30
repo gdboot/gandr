@@ -2,7 +2,8 @@ ENTRY(_start)
 
 SECTIONS
 {
-    .text 0x17000 :
+    /* This address is provisional */
+    .text 0x8000 :
     {
         *(header)
         *(.text)
