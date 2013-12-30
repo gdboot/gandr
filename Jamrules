@@ -37,6 +37,8 @@ rule _SubSetIncluded {
     if ! $($(1:J=__)_INCLUDED) {
         $(1:J=__)_INCLUDED = 1 ;
     }
+
+    SUBDIRHDRS += $(GANDALF_INCLUDE_DIRS) ;
 }
 
 # JamBase invokes all rules specified in SUBDIRRULES when a new subdir is 
@@ -106,14 +108,14 @@ rule AsCpp
 
     ASFLAGS on $(<) += $(ASFLAGS) $(SUBDIRASFLAGS) ;
 
-    ASHDRS on $(<) = [ on $(<) FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS) ] ;
+    CCHDRS on $(<) = [ on $(<) FIncludes $(HDRS) ] ;
     CCDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
 }
 
 # Pass them to GCC
 actions AsCpp
 {
-    $(CC) -c $(ASFLAGS) $(ASHDRS) $(CCDEFS) -o $(<) $(>)
+    $(CC) -c $(ASFLAGS) $(CCHDRS) $(CCDEFS) -o $(<) $(>)
 }
 
 # Determine the platform, soc, arch information
@@ -152,7 +154,7 @@ TOOLSET = gcc ;
 CCFLAGS  += -ffreestanding -g -std=c99 ;
 C++FLAGS += -ffreestanding -g -std=c++0x ;
 
-AS         = $(TOOLPREFIX)as ;
+AS         = $(TOOLPREFIX)gcc ;
 AR         = $(TOOLPREFIX)ar cru ;
 CC         = $(TOOLPREFIX)gcc ;
 OPTIM      = -Os ;
