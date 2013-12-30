@@ -11,6 +11,9 @@
 #define PM_DS64 PM_DS32
 
 #ifndef __ASSEMBLER__
+#include <stddef.h>
+#include <stdint.h>
+
 struct bios_registers {
     uint16_t ds;
     uint16_t es;

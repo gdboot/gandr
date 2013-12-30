@@ -1,4 +1,8 @@
+#include <bal/bios_services.h>
+
 struct bios_service_table *bios_services;
+
+extern void* memcpy(void *restrict, const void *restrict, size_t);
 
 static inline void* push(void *restrict *restrict psp, const void *restrict src, size_t len)
 {
@@ -28,7 +32,7 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
     __asm volatile(
 #ifdef __i386__
         // Save all regs using pushad
-        "pushad\n"
+        "pushal\n"
 #endif
         // (On long mode we rely on preservation of r8+ to satifsy the compiler)
 
@@ -39,7 +43,7 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
         "mov %%cs, %%eax\n"
         "mov %%eax, 4(%%esp)\n"
         "mov $1f, %%eax\n"
-        "mov %%eax, 0(%esp)\n"
+        "mov %%eax, 0(%%esp)\n"
 
         // Stash esp on the real mode stack
         "mov %%esp, %[ret_info]\n"
@@ -50,7 +54,7 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
 
         "1:\n"
 #ifdef __i386__
-        "popad\n"
+        "popal\n"
 #endif
 
         : [ret_info]        "=m"    (*ret_info_ptr)
@@ -60,6 +64,8 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
 #ifdef __amd64__
         , "rax", "rbx", "rcx", "rdx"
         , "rsi", "rdi", "rbp"
+#else
+        , "eax"
 #endif
     );
 
@@ -67,14 +73,14 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
     memcpy(regs, sp, sizeof *regs);
 }
 
-void bios_int_call(uint8_t num, bios_registers *regs)
+void bios_int_call(uint8_t num, struct bios_registers *regs)
 {
     void *sp = (void*) bios_services->rm_stack;
 
     uint32_t tmp = 0;
 
     // Reserve space on stack for our esp
-    push(&sp, &tmp, sizeof tmp);
+    void ** ret_info_ptr = push(&sp, &tmp, sizeof tmp);
 
     // Copy registers onto the stack
     push(&sp, regs, sizeof *regs);
@@ -83,7 +89,7 @@ void bios_int_call(uint8_t num, bios_registers *regs)
     __asm volatile(
 #ifdef __i386__
         // Save all regs using pushad
-        "pushad\n"
+        "pushal\n"
 #endif
         // (On long mode we rely on preservation of r8+ to satifsy the compiler)
 
@@ -94,7 +100,7 @@ void bios_int_call(uint8_t num, bios_registers *regs)
         "mov %%cs, %%ebx\n"
         "mov %%ebx, 4(%%esp)\n"
         "mov $1f, %%ebx\n"
-        "mov %%ebx, 0(%esp)\n"
+        "mov %%ebx, 0(%%esp)\n"
 
         // Stash esp on the real mode stack
         "mov %%esp, %[ret_info]\n"
@@ -105,17 +111,19 @@ void bios_int_call(uint8_t num, bios_registers *regs)
 
         "1:\n"
 #ifdef __i386__
-        "popad\n"
+        "popal\n"
 #endif
 
         : [ret_info]        "=m"    (*ret_info_ptr)
         , [num]             "+a"    (num)
         : [sp]              "r"     (sp)
-        , [far_call_tvec]   "m"     (bios_services->int_call_ptr)
+        , [int_call_tvec]   "m"     (bios_services->int_call_ptr)
         : "cc", "memory"
 #ifdef __amd64__
         , "rbx", "rcx", "rdx"
         , "rsi", "rdi", "rbp"
+#else
+        , "ebx"
 #endif
     );
 
