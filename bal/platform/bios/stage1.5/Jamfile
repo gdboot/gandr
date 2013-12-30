@@ -11,5 +11,6 @@ MakeLocate $(s15_objects) : $(LOCATE_TARGET) ;
 
 # Here be the objects
 Objects $(s15_sources) ;
-LinkWithScript gandalf.b16 : $(s15_objects) : [ FDirName $(GANDALF_TOP) bal platform bios stage1.5 link.ld ] ;
+LinkWithScript gandalf_b16.elf : $(s15_objects) : [ FDirName $(GANDALF_TOP) bal platform bios stage1.5 link.ld ] ;
+ObjCopy gandalf.b16 : gandalf_b16.elf : -O binary ;
 DEPENDS exe : gandalf.b16 ;

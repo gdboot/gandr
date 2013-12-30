@@ -1,6 +1,3 @@
-# Build files.
-/stage1
-
 *.o
 *.d
 *.flp
@@ -11,7 +8,6 @@
 # Kdevelop project files
 *.kdev*
 
-tools/
 build/
 
 .bochsrc
