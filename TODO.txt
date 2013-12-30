@@ -1,5 +1,4 @@
-TODO
-=======
+=== TODO ===
 
     * Add error handling in Stage 1 (Shikhin).
     * Add PXE read/write (Shikhin).
