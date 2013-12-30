@@ -9,6 +9,8 @@ rule BiosStage1 {
     # Specific sources
     local specific_srcs =  [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1 $(2) ] : *.S ] ;
 
+    local def = BD_$(2:U) ;
+
     # General objects
     local objs = ;
     for src in [ FGristFiles $(STAGE1_SRCS) ] {
@@ -26,6 +28,7 @@ rule BiosStage1 {
         objs += $(obj) ;
     }
 
+    ObjectDefines $(objs) : $(def) ;
     LinkWithScript $(<).elf : $(objs) : [ FDirName $(GANDALF_TOP) bal platform bios stage1 link.ld ] ;
     ObjCopy $(<) : $(<).elf ;
     DEPENDS exe : $(<) ; 
