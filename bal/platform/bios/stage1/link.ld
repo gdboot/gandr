@@ -2,13 +2,13 @@ ENTRY(_start)
  
 SECTIONS
 {
-    .text 0x7C00 :
+    .text 0x0600 :
     {
         *(base.start)
         *(base)
     }
  
-    .data 0x7DFE :
+    .data 0x07FE :
     {
         *(boot_signature)
     }
@@ -24,7 +24,7 @@ SECTIONS
         *(.data)
     }
  
-    .data 0xAFF8 :
+    .data 0x1FF8 :
     {
         *(signature)
     }
