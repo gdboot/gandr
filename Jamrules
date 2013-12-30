@@ -107,13 +107,13 @@ rule AsCpp
     ASFLAGS on $(<) += $(ASFLAGS) $(SUBDIRASFLAGS) ;
 
     ASHDRS on $(<) = [ on $(<) FIncludes $(SEARCH_SOURCE) $(SUBDIRHDRS) $(HDRS) ] ;
-    ASDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
+    CCDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
 }
 
 # Pass them to GCC
 actions AsCpp
 {
-    $(CC) -c $(ASFLAGS) $(ASHDRS) $(ASDEFS) -o $(<) $(>)
+    $(CC) -c $(ASFLAGS) $(ASHDRS) $(CCDEFS) -o $(<) $(>)
 }
 
 # Determine the platform, soc, arch information

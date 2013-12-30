@@ -1,9 +1,4 @@
 SubDir GANDALF_TOP bal platform bios ;
 
-# Pre-processor flags.
-# CPPFLAGS := -D$(shell echo "BD_$(BOOT_DEVICE)" | tr '[:lower:]' '[:upper:]')
-
-
-
 SubIncludeOnce GANDALF_TOP bal platform bios stage1 ;
 SubIncludeOnce GANDALF_TOP bal platform bios stage1.5 ;
