@@ -1,0 +1,24 @@
+forward
+	unsigned						: num
+	va_list							: ap
+
+openat
+	gd_device_t * 					: p_fd
+	const char *					: name
+
+read
+	void *							: buf
+	size_t							: nbytes
+
+write
+	const void *					: buf
+	size_t							: nbytes
+
+close
+
+
+uart_get_config; struct gd_uart_config
+	struct gd_uart_config * 		: config
+
+uart_set_config
+	const struct gd_uart_config *	: config

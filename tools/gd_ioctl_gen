@@ -1,0 +1,133 @@
+#!/usr/bin/awk -f
+
+# This script is designed to be invoked from the Gandalf build process
+# It interprets the ioctl definition file, which takes the format
+# > name
+# >     type  : param1
+# >     type2 : param2
+#
+# Parameters:
+#   -list           Print a list of stub files to stdout
+#   -stub           Generate the stub files
+#   -stubdir /dir/  Output the stub files to /dir/
+#   -hdr /path/     Output the gd_ioctl.h hdr to /path/
+#
+# This script works with both the One True Awk and GNU Awk
+
+BEGIN {
+    RS = ""
+    FS = "\n"
+    prefix  = ""
+
+    for(i = 1; i <= ARGC; i++) {
+        if(ARGV[i] == "-list") {
+            list = 1
+            delete ARGV[i]
+        } else if(ARGV[i] == "-stub") {
+            stub = 1
+            delete ARGV[i]
+        } else if(ARGV[i] == "-stubdir") {
+            prefix = ARGV[i + 1];
+
+            if(!match(prefix, /\/$/)) {
+                prefix = prefix "/"
+            }
+
+            print "Prefix is " prefix > "/dev/stderr"
+
+            delete ARGV[i]
+            delete ARGV[++i]
+        } else if(ARGV[i] == "-hdr") {
+            header  = ARGV[i + 1];
+            
+            delete ARGV[i]
+            delete ARGV[++i]
+        }
+    }
+
+    if(header) {
+        print "#ifndef GD_IOCTL_H"  > header
+        print "#define GD_IOCTL_H"  > header
+        print "#include <gd_bal.h>" > header
+        print "#include <stddef.h>" > header
+        print "#include <stdint.h>" > header
+
+        print "int gd_ioctl(gd_device_t, unsigned, ...);" > header
+    }
+}
+
+function strip(str)
+{
+    gsub(/^[[:space:]]*/, "", str)
+    gsub(/[[:space:]]*$/, "", str)
+    return str
+}
+
+{
+    num_lead_parts = split($1, lead_parts, ";")
+
+    name = strip(lead_parts[1])
+    define = sprintf("GD_%s_IOCTL", toupper(name))
+    ioctl_stub = sprintf("%sgd_%s_stub.c", prefix, name)
+}
+
+header {
+    printf("#define %s %d\n", define, NR) > header
+
+    for(i = 2; i <= num_lead_parts; i++) {
+        printf("%s;\n", strip(lead_parts[i])) > header
+    }
+
+    printf("int gd_%s(gd_device_t", name) > header
+
+    for(i = 2; i <= NF; i++) {
+        num_parts = split($i, parts, ":")
+        if(num_parts != 2) {
+            printf("Malformed parameter in function %s (parameter %d)", $1, i);
+        }
+
+        printf(", %s", strip(parts[1])) > header
+    }
+
+    printf(");\n") > header
+}
+
+list {
+    print ioctl_stub
+}
+
+stub {
+    # ioctl function
+    print "#include <gd_ioctl.h>" > ioctl_stub;
+
+
+    printf("int gd_%s(gd_device_t _dev", name) > ioctl_stub;
+
+    for(i = 2; i <= NF; i++) {
+        num_parts = split($i, parts, ":");
+        if(num_parts != 2) {
+            printf("Malformed parameter in function %s (parameter %d)", $1, i);
+        }
+
+        printf(", %s %s", strip(parts[1]), strip(parts[2])) > ioctl_stub;
+    }
+
+    printf(")\n") > ioctl_stub;
+    printf("{\n") > ioctl_stub;
+
+    printf("  return _dev->ioctl(_dev, %s", define) > ioctl_stub;
+    for(i = 2; i <= NF; i++) {
+        num_parts = split($i, parts, ":");
+        printf(", %s", strip(parts[2])) > ioctl_stub;
+    }
+    printf(");\n") > ioctl_stub;
+
+    printf("}\n") > ioctl_stub;
+    close(ioctl_stub)
+}
+
+END {
+    if(header) {
+        print "#endif" > header
+    }
+}

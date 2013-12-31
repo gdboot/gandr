@@ -118,12 +118,39 @@ actions AsCpp
     $(CC) -c $(ASFLAGS) $(CCHDRS) $(CCDEFS) -o $(<) $(>)
 }
 
+GD_IOCTL_GEN = [ FDirName $(GANDALF_TOP) tools gd_ioctl_gen ] ;
+# Parse the ioctl definition
+# GdIoctls lib : <source> ;
+rule GdIoctls {
+    local files = [ COMMAND $(GD_IOCTL_GEN) $(>) -stubdir ioctl_stubs -list ] ;
+    files = [ FGristFiles $(files) ] ;
+    ECHO Files are $(files) ;
+
+    GdIoctlGen $(files) : $(>) : include/gd_ioctl.h : ioctl_stubs ;
+    Library $(<) : $(files) ioctl_stubs/gd_ioctl_stub.c ;
+}
+
+# Internal
+# GdIoctlGen $(stubs) : $(input) : $(hdr) : $(dir) ;
+rule GdIoctlGen {
+    ECHO $(<) from $(>) ;
+    DEPENDS $(<) $(3) : $(>) $(GD_IOCTL_GEN) ;
+    MakeLocate $(<) $(3) $(4) : $(LOCATE_TARGET) ;
+    DIR on $(<) = [ FDirName $(LOCATE_TARGET) $(4) ] ;
+    HDR on $(<) = [ FDirName $(LOCATE_TARGET) $(3) ] ;
+}
+
+actions GdIoctlGen {
+    $(GD_IOCTL_GEN) $(>) -stubdir $(DIR) -stub -hdr $(HDR)
+}
+
 # Determine the platform, soc, arch information
 # Do so in that order; platform can imply soc can imply arch
 
 # XXX These paths may need consideration once we have KL!
 
-GANDALF_INCLUDE_DIRS = [ FDirName $(GANDALF_TOP) include ] ;
+GandalfIncludeDir $(ALL_LOCATE_TARGET) bal include ;
+GandalfIncludeDir $(GANDALF_TOP) include ;
 
 if ! $(PLATFORM) {
     ECHO "Must specify a platform" ;
@@ -169,6 +196,7 @@ PICFLAGS   = -fPIC ;
 OBJDUMP    = $(TOOLPREFIX)objdump ;
 OBJCOPY    = $(TOOLPREFIX)objcopy ;
 STRIP      = $(TOOLPREFIX)strip ;
+RANLIB     = $(TOOLPREFIX)ranlib ;
 
 # Work around a bug in Jambase
 # XXX This should go into ejam
@@ -182,14 +210,16 @@ rule MakeLocate
 
     if $(>)
     {
-        local _rev = [ FReverse $(>) ] ;
-        if $(_rev[1]) = "." {
-          _rev = $(_rev[2-]) ;
-        } 
-        local _dir = [ FDirName [ FReverse $(_rev) ] $(<[0]:D) ] ;
+        for file in $(<) {
+            local _rev = [ FReverse $(>) ] ;
+            if $(_rev[1]) = "." {
+              _rev = $(_rev[2-]) ;
+            } 
+            local _dir = [ FDirName [ FReverse $(_rev) ] $(file:D) ] ;
 
-        LOCATE on $(<) = [ FDirName $(>) ] ;
-        Depends $(<) : $(_dir:G=dir) ;
-        MkDir $(_dir:G=dir) ;
+            LOCATE on $(file) = [ FDirName $(>) ] ;
+            Depends $(<) : $(_dir:G=dir) ;
+            MkDir $(_dir:G=dir) ;
+        }
     }
 }

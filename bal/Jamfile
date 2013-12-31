@@ -4,6 +4,8 @@ GandalfBalSources
     gio.c
     ;
 
+GdIoctls libgdioctl.a : [ FDirName $(GANDALF_TOP) bal ioctl.txt ] ;
+
 # Include arch, soc, platform headers
 SubIncludeOnce GANDALF_TOP bal arch $(ARCH) ;
 if $(SOC) {
