@@ -27,12 +27,17 @@ pxe_flags:
 #define TFTP_READ       0x22
 #define TFTP_GET_FSIZE  0x25
 
+#define PACKET_SIZE     512         // 512 bytes is most supported.
+#define UDP_PORT        (69 << 8)   // 69 << 8 in big endian, word.
+
 // The PXENV_GET_CACHED_INFO structure.
     .struct 0
 cached_info_status:
     .struct cached_info_status + 2
 cached_info_packet_type:
     .struct cached_info_packet_type + 2
+cached_info_buffer_size:
+    .struct cached_info_buffer_size + 2
 cached_info_buffer_off:
     .struct cached_info_buffer_off + 2
 cached_info_buffer_seg:
@@ -44,19 +49,63 @@ cached_info_sip:
 cached_info_gip:
 
 .data
-
-// The PXENV_GET_CACHED_INFO structure.
 pxe_cached_info:
-    .status:                .word 0
-    .packet_type:           .word 2
-    .buffer_size:           .word 0
-        .buffer_offset:     .word 0  // Zero implies PXE uses own buffer.
-        .buffer_segment:    .word 0
-    .buffer_limit:          .word 0
-    
-    // Not part of actual PXENV_GET_CACHED_INFO structure.
-    .sip:                   .long 0
-    .gip:                   .long 0
+    .word 0
+    .word 2
+    .word 0
+    .word 0  // Zero implies PXE uses own buffer.
+    .word 0
+    .word 0
+
+    // SIP & GIP part of actual PXENV_GET_CACHED_INFO structure.
+    .long 0
+    .long 0
+
+// The PXENV_TFTP_OPEN structure.
+    .struct 0
+tftp_open_status:
+    .struct tftp_open_status + 2
+tftp_open_sip:
+    .struct tftp_open_sip + 4
+tftp_open_gip:
+    .struct tftp_open_gip + 4
+tftp_open_filename:
+    .struct tftp_open_filename + 128
+tftp_open_port:
+    .struct tftp_open_port + 2
+tftp_open_packet_size:
+
+.data
+pxe_tftp_open:
+    .word 0
+    .long 0
+    .long 0
+    .skip 128, 0
+    .word 0
+    .word 0
+
+// The PXENV_TFTP_READ structure.
+    .struct 0
+tftp_read_status:
+    .struct tftp_read_status + 2
+tftp_read_packet_num:
+    .struct tftp_read_packet_num + 2
+tftp_read_buffer_size:
+    .struct tftp_read_buffer_size + 2
+tftp_read_buffer_off:
+    .struct tftp_read_buffer_off + 2
+tftp_read_buffer_seg:
+
+.data
+pxe_tftp_read:
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+    .word 0
+
+current_file:       .byte -1 // -1 indicates no open file.
+current_file_size:  .long 0  // Size.
 
 .text
 
@@ -168,11 +217,8 @@ storage_init:
 
     // Get cached info.
     .cached_info:
-        // %es:di points to the pxe_cached_info structure.
-        xor %ax, %ax
-        mov %ax, %es
+        // %ds:di points to the pxe_cached_info structure.
         mov $pxe_cached_info, %di
-
         mov $GET_CACHED_INFO, %bx
 
         call pxe_api
@@ -181,14 +227,15 @@ storage_init:
         jnz .error_get_cached_info
 
         // Store the SIP & GIP over.
-        mov pxe_cached_info + cached_info_sip, %di
+        mov %ax, %es
+        mov $(pxe_cached_info + cached_info_sip), %di
 
-        mov (pxe_cached_info + cached_info_buffer_off), %si
+        mov (pxe_cached_info + 6), %si
         add $20, %si        // Offset to the SIP and GIP.
 
         push %ds
 
-        mov (pxe_cached_info + cached_info_buffer_seg), %ax
+        mov (pxe_cached_info + 8), %ax
         mov %ax, %ds
 
         movsl /* SIP */
@@ -211,3 +258,96 @@ storage_init:
         /* TODO: ERROR HANDLING. */
         hlt
         jmp .error_no_pxe
+
+/*
+ * Opens a file to be read from.
+ *     ds:si -> points to the file name.
+ *
+ * Returns: 
+ *     ecx -> size of the file.
+ *     Carry set on error.
+ */
+.global file_open
+file_open:
+    pushal
+    push %ds
+
+    xor %ax, %ax
+    mov %ax, %ds    
+
+    // If any file is open, error.
+    cmpb $-1, (current_file)
+    jne .open_error
+
+    // Initialize pxe_tftp_open structure.
+    movw %ax, (pxe_tftp_open)
+
+    movw $UDP_PORT, (pxe_tftp_open + tftp_open_port)
+    movw $PACKET_SIZE, (pxe_tftp_open + tftp_open_packet_size)
+
+    mov (pxe_cached_info + cached_info_sip), %eax
+    mov %eax, (pxe_tftp_open + tftp_open_sip)
+    mov (pxe_cached_info + cached_info_gip), %eax
+    mov %eax, (pxe_tftp_open + tftp_open_gip)
+
+    mov $(pxe_tftp_open + tftp_open_filename), %di
+    mov $0x746f6f62 /* boot */, %eax
+    stosl
+    mov $0x2f, /* / */ %al
+    stosb
+
+    pop %ds
+    push %ds
+
+    mov 127 - 5, %cx    // 5 bytes comprise of boot/.
+    call strncpy
+
+    xor %ax, %ax
+    mov %ax, %ds 
+
+    mov $pxe_tftp_open, %di
+    mov $TFTP_OPEN, %bx
+    call pxe_api
+
+    orw (pxe_tftp_open), %ax
+    jnz .open_error
+
+    clc
+    .open_ret:
+        pop %ds
+        popal
+        ret
+
+    .open_error:
+        stc
+        jmp .open_ret
+
+/*
+ * Close the currently open file.
+ *
+ * Returns: 
+ *     Carry set on error.
+ */
+.global file_close  
+file_close:
+    pushal
+
+    movw $0, (pxe_tftp_open)
+
+    mov $pxe_tftp_open, %di
+    mov $TFTP_CLOSE, %bx
+    call pxe_api
+
+    orw (pxe_tftp_open), %ax
+    jnz .close_error
+
+    movb $-1, (current_file)
+
+    clc
+    .close_ret:
+        popal
+        ret
+
+    .close_error:
+        stc
+        jmp .close_ret

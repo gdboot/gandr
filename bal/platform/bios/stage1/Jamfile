@@ -6,7 +6,6 @@ STAGE1_SRCS = [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1 ] : *.S 
 # List of stage 1s:
 STAGE1_LIST =
     pxe
-    eltorito
     ;
 
 for stage1 in $(STAGE1_LIST) {

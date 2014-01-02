@@ -57,6 +57,7 @@ reset_cs:
     call storage_init
 
 #ifdef BD_PXE
+    xor %ax, %ax
     mov %ax, %ss
     mov $BOOT_STACK, %sp
 #endif
@@ -64,9 +65,6 @@ reset_cs:
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
-
-    mov $0xDEADBEEF, %eax
-    call output_hexadecimal
 
     .hlt:
         hlt

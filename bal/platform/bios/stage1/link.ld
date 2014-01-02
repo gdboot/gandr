@@ -6,15 +6,11 @@ SECTIONS
     {
         *(base.start)
         *(base)
-    }
- 
-    .data 0x07FE :
-    {
-        *(boot_signature)
-    }
- 
-    .text :
-    {
+
+        . = 0x01FE;
+        BYTE(0x55);
+        BYTE(0xAA);
+
         *(.text)
         *(.rodata)
     }
@@ -22,10 +18,8 @@ SECTIONS
     .data :
     {
         *(.data)
-    }
- 
-    .data 0x1FF8 :
-    {
+
+        . = 0x1FF8;
         *(signature)
     }
  
