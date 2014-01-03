@@ -21,7 +21,7 @@ __asm(
 ".global gd_ioctl\n"
 "gd_ioctl:\n"
 "	ldr pc, [r0]\n"
-)
+);
 
 #else
 int gd_ioctl(gd_device_t dev, unsigned num, ...)

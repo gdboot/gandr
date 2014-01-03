@@ -1,0 +1,5 @@
+GdIncludeDir $(GD_TOP) include arch arm ;
+
+TOOLPREFIX = arm-none-eabi- ;
+
+ECHO arm ;

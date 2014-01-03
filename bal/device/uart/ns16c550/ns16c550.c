@@ -1,4 +1,4 @@
-#include <uart/ns16c550.h>
+#include <bal/device/uart/ns16c550.h>
 
 //! NS16C550 Registers
 enum ns16c550_reg {

@@ -1,0 +1,13 @@
+GdIncludeDir $(GD_TOP) soc am33xx ;
+
+SUPPORTED_ARCHITECTURES = arm ;
+ARCH ?= arm ;
+
+AM33XX_LINKERSCRIPT = [ FDirName $(GD_TOP) bal soc am33xx am33xx.ld ] ;
+
+rule GdBalBinaries {
+    LinkWithScript gd_$(PLATFORM).elf : $(GD_BAL_OBJECTS) : $(AM33XX_LINKERSCRIPT) ;
+    #LinkLibraries gd_$(PLATFORM).elf : $(PDCLIB) ;
+    ObjCopy gd_$(PLATFORM).bin : gd_$(PLATFORM).elf : -O binary ;
+    Depends exe : gd_$(PLATFORM).bin ;
+}
