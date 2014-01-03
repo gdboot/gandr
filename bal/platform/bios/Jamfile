@@ -5,4 +5,3 @@ GandalfBalSources
 	;
 
 SubIncludeOnce GANDALF_TOP bal platform bios stage1 ;
-SubIncludeOnce GANDALF_TOP bal platform bios stage1.5 ;
