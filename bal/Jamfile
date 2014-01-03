@@ -1,14 +1,18 @@
-SubDir GANDALF_TOP bal ;
+SubDir GD_TOP bal ;
 
-GandalfBalSources
+GdBalSources
     gio.c
     ;
 
 GdIoctls libgdioctl.a : [ FDirName $(GANDALF_TOP) bal ioctl.txt ] ;
 
 # Include arch, soc, platform headers
-SubIncludeOnce GANDALF_TOP bal arch $(ARCH) ;
+SubIncludeOnce GD_TOP bal arch $(ARCH) ;
 if $(SOC) {
-    SubIncludeOnce GANDALF_TOP bal soc $(SOC) ;
+    SubIncludeOnce GD_TOP bal soc $(SOC) ;
 }
-SubIncludeOnce GANDALF_TOP bal platform $(PLATFORM) ;
+SubIncludeOnce GD_TOP bal platform $(PLATFORM) ;
+
+SubDir GD_TOP bal ;
+
+GdBalBinaries ;

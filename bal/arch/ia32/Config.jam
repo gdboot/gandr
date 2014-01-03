@@ -1,5 +1,5 @@
-GandalfIncludeDir $(GANDALF_TOP) include arch ia32 ;
-GandalfIncludeDir $(GANDALF_TOP) include arch x86  ;
+GdIncludeDir $(GD_TOP) include arch ia32 ;
+GdIncludeDir $(GD_TOP) include arch x86  ;
 
 TOOLPREFIX = i386-elf- ;
 

@@ -1,7 +1,7 @@
-SubDir GANDALF_TOP bal platform bios ;
+SubDir GD_TOP bal platform bios ;
 
-GandalfBalSources
+GdBalSources
 	bios_services.c
 	;
 
-SubIncludeOnce GANDALF_TOP bal platform bios stage1 ;
+SubIncludeOnce GD_TOP bal platform bios stage1 ;

@@ -1,4 +1,6 @@
-GandalfIncludeDir $(GANDALF_TOP) include platform bios ;
+GdIncludeDir $(GD_TOP) include platform bios ;
+
+
 SUPPORTED_ARCHITECTURES = 
     ia32 
     amd64 

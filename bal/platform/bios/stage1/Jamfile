@@ -1,7 +1,7 @@
-SubDir GANDALF_TOP bal platform bios stage1 ;
+SubDir GD_TOP bal platform bios stage1 ;
 
 # General stage 1 sources
-STAGE1_SRCS = [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1 ] : *.S ] ;
+STAGE1_SRCS = [ GLOB [ FDirName $(GD_TOP) bal platform bios stage1 ] : *.S ] ;
 
 # List of stage 1s:
 STAGE1_LIST =
