@@ -115,6 +115,11 @@ current_file_size:  .long 0  // Size.
  *     bx -> the "opcode".
  */
 pxe_api:
+    push %ecx
+    push %edx
+    push %esi
+    push %edi
+
     // NOTE: 
     // The above registers are what the legacy API also used.
     // And we push it over here, so that we have no problems with the new API.
@@ -125,6 +130,11 @@ pxe_api:
     lcall *(pxe_api_addr)
     
     add $6, %sp
+
+    pop %edi
+    pop %esi
+    pop %edx
+    pop %ecx
     ret
 
 /*
@@ -272,6 +282,15 @@ file_open:
     pushal
     push %ds
 
+    mov $(pxe_tftp_open + tftp_open_filename), %di
+    mov $0x746f6f62 /* boot */, %eax
+    stosl
+    mov $0x2f, /* / */ %al
+    stosb
+
+    mov 127 - 5, %cx    // 5 bytes comprise of boot/.
+    call strncpy
+
     xor %ax, %ax
     mov %ax, %ds    
 
@@ -282,28 +301,25 @@ file_open:
     // Initialize pxe_tftp_open structure.
     movw %ax, (pxe_tftp_open)
 
-    movw $UDP_PORT, (pxe_tftp_open + tftp_open_port)
-    movw $PACKET_SIZE, (pxe_tftp_open + tftp_open_packet_size)
-
     mov (pxe_cached_info + cached_info_sip), %eax
     mov %eax, (pxe_tftp_open + tftp_open_sip)
     mov (pxe_cached_info + cached_info_gip), %eax
     mov %eax, (pxe_tftp_open + tftp_open_gip)
 
-    mov $(pxe_tftp_open + tftp_open_filename), %di
-    mov $0x746f6f62 /* boot */, %eax
-    stosl
-    mov $0x2f, /* / */ %al
-    stosb
+    movl $0, (pxe_tftp_open + tftp_open_port)
 
-    pop %ds
-    push %ds
+    mov $pxe_tftp_open, %di
+    mov $TFTP_GET_FSIZE, %bx
+    call pxe_api
 
-    mov 127 - 5, %cx    // 5 bytes comprise of boot/.
-    call strncpy
+    orw (pxe_tftp_open), %ax
+    jnz .open_error
 
-    xor %ax, %ax
-    mov %ax, %ds 
+    mov (pxe_tftp_open + tftp_open_port), %ecx
+    mov %ecx, 26(%esp) /* store ECX on stack. */
+
+    movw $UDP_PORT, (pxe_tftp_open + tftp_open_port)
+    movw $PACKET_SIZE, (pxe_tftp_open + tftp_open_packet_size)
 
     mov $pxe_tftp_open, %di
     mov $TFTP_OPEN, %bx

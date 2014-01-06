@@ -3,6 +3,10 @@
  */
 
 .code16
+.data
+
+filename: .string "gandalf.b16"
+
 .section base.start
 
 #define BOOT_STACK  0x8000
@@ -65,6 +69,13 @@ reset_cs:
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
+
+    mov $filename, %si
+    call file_open
+    jc .hlt
+
+    mov %ecx, %eax
+    call output_hexadecimal
 
     .hlt:
         hlt
