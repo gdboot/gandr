@@ -271,7 +271,7 @@ storage_init:
 
 /*
  * Opens a file to be read from.
- *     ds:si -> points to the file name.
+ *     esi -> points to the file name.
  *
  * Returns: 
  *     ecx -> size of the file.
@@ -281,6 +281,15 @@ storage_init:
 file_open:
     pushal
     push %ds
+
+    mov %esi, %eax
+
+    // Get the segment.
+    shr $4, %eax
+    mov %ax, %ds
+
+    // And the offset.
+    and $0x000F, %esi
 
     mov $(pxe_tftp_open + tftp_open_filename), %di
     mov $0x746f6f62 /* boot */, %eax
@@ -337,6 +346,64 @@ file_open:
     .open_error:
         stc
         jmp .open_ret
+
+/*
+ * Reads the currently open file.
+ *     edi -> where to read the file to.
+ *     ecx -> the number of bytes to read.
+ *
+ * Returns: 
+ *     Carry set on error.
+ */
+.global file_read
+file_read:
+    pushal
+
+    .read:
+        mov %edi, %edx
+        mov %edi, %ebx
+        and $0x000F, %ebx
+        shr $4, %edx
+        // Segment in EDX, offset in EBX.
+
+        mov %bx, (pxe_tftp_read + tftp_read_buffer_off)
+        mov %dx, (pxe_tftp_read + tftp_read_buffer_seg)
+
+        movl $0, (pxe_tftp_read + tftp_read_status)
+        movw $0, (pxe_tftp_read + tftp_read_buffer_size)
+
+        push %di
+
+        mov $pxe_tftp_read, %di
+        mov $TFTP_READ, %bx
+        call pxe_api
+
+        pop %di
+
+    .read_loop:
+        or (pxe_tftp_read), %ax
+        jnz .read_error
+
+        movzwl (pxe_tftp_read + tftp_read_buffer_size), %edx
+        cmp $PACKET_SIZE, %edx
+        jb .success
+
+        add %edx, %edi
+        cmp %edx, %ecx
+        jbe .success
+
+        sub %edx, %ecx
+        jmp .read
+
+    .success:
+        clc
+    .read_ret:
+        popal
+        ret
+
+    .read_error:
+        stc
+        jmp .read_ret
 
 /*
  * Close the currently open file.
