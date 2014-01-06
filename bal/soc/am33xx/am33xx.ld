@@ -33,7 +33,7 @@
 *
 */
 
-/* Linker script for Gandalf on TI AM33XX SoCs. Derived from the Starterware
+/* Linker script for Gandr on TI AM33XX SoCs. Derived from the Starterware
  * linkerscript
  */
 

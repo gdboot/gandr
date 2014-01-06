@@ -4,7 +4,7 @@ GdBalSources
     gio.c
     ;
 
-GdIoctls libgdioctl.a : [ FDirName $(GANDALF_TOP) bal ioctl.txt ] ;
+GdIoctls libgdioctl.a : [ FDirName $(GD_TOP) bal ioctl.txt ] ;
 
 # Include arch, soc, platform headers
 SubIncludeOnce GD_TOP bal arch $(ARCH) ;
