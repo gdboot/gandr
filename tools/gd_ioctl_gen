@@ -1,6 +1,6 @@
 #!/usr/bin/awk -f
 
-# This script is designed to be invoked from the Gandalf build process
+# This script is designed to be invoked from the Gandr build process
 # It interprets the ioctl definition file, which takes the format
 # > name
 # >     type  : param1
