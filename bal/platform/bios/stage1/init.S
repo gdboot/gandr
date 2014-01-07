@@ -81,6 +81,9 @@ reset_cs:
     mov %ax, %fs
     mov %ax, %gs
 
+    // Enable A20 gate.
+    call a20_enable
+
     .hlt:
         hlt
         jmp .hlt
