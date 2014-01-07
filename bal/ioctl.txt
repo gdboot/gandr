@@ -1,24 +1,30 @@
 forward
-	unsigned						: num
-	va_list							: ap
+    unsigned                        : num
+    va_list                         : ap
 
 openat
-	gd_device_t * 					: p_fd
-	const char *					: name
+    gd_device_t *                   : p_fd
+    const char *                    : name
 
 read
-	void *							: buf
-	size_t							: nbytes
+    void *                          : buf
+    size_t                          : nbytes
 
 write
-	const void *					: buf
-	size_t							: nbytes
+    const void *                    : buf
+    size_t                          : nbytes
 
 close
 
 
 uart_get_config; struct gd_uart_config
-	struct gd_uart_config * 		: config
+    struct gd_uart_config *         : config
 
 uart_set_config
-	const struct gd_uart_config *	: config
+    const struct gd_uart_config *   : config
+
+i2c_start
+    uint16_t                        : address
+    bool                            : writing
+
+i2c_stop
