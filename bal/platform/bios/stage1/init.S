@@ -29,6 +29,21 @@
  */
 .global _start
 _start:
+#ifdef BD_ELTORITO
+    // Have space for the boot information table passed by mkisofs.
+    jmp .relocate
+
+.align 8
+.global eltorito_info
+eltorito_info:
+    .long 0
+    .long 0
+    .long 0
+    .long 0
+    .skip 40, 0
+
+.relocate:
+#endif
     // Relocate us down to 0x0600.
 #ifdef BD_PXE
     push %es

@@ -18,10 +18,12 @@ SECTIONS
     .data :
     {
         *(.data)
-
-        . = 0x1FF8;
-        *(signature)
     }
- 
+
+    .bss :
+    {
+        *(.bss*)
+    }
+
     end = .;
 }
