@@ -2,5 +2,5 @@
 
     * Add error handling in Stage 1. (Shikhin)
     * Add ISO9660 support. (Shikhin)
-    * Add 386 check, CPUID check. (Shikhin)
+    * Add CPUID check. (Shikhin)
     * Add stage2 read code, and final switch code. (Shikhin, oshepherd)

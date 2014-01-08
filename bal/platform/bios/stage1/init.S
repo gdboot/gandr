@@ -83,12 +83,31 @@ reset_cs:
     mov $BOOT_STACK, %sp
 #endif
 
+    // Invert the IOPL bits, since on 8086/80186 they are hardwired to 1.
+    // In real mode on the 286, they are always 0, though.
+    pushf
+    pop %ax
+    xor $0x30, %ah
+
+    push %ax
+    popf
+    pushf
+    pop %cx
+
+    // Test if bits changed, or not.
+    xor %cx, %ax
+    test %ah, %ah
+    jnz .error_not_386
+
     call output_init
     call storage_init
 
 #ifdef BD_PXE
     xor %ax, %ax
     mov %ax, %ss
+    mov $BOOT_STACK, %esp
+#else
+    // Clear higher word of ESP.
     mov $BOOT_STACK, %esp
 #endif
 
@@ -101,4 +120,8 @@ reset_cs:
 
     .hlt:
         hlt
+        jmp .hlt
+
+    .error_not_386:
+        /* TODO: ERROR. */
         jmp .hlt
