@@ -58,7 +58,7 @@ eltorito_info:
     
 #ifdef BD_PXE
     mov 0x2000 - 0x0600, %cx
-#elseif defined(BD_ELTORITO)
+#elif defined(BD_ELTORITO)
     mov $2048, %cx
 #else
     mov $512, %cx

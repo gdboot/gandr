@@ -98,7 +98,7 @@ int13_ext_read:
     mov %ebx, (lba_packet + lba_packet_lba_low)
     movl $0, (lba_packet + lba_packet_lba_high)
 
-    mov %eax, %edi
+    mov %edi, %eax
     shr $4, %eax
     mov %ax, (lba_packet + lba_packet_buffer_seg)
     mov %di, %ax
