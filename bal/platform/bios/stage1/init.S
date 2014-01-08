@@ -74,7 +74,7 @@ reset_cs:
 #ifdef BD_PXE
     xor %ax, %ax
     mov %ax, %ss
-    mov $BOOT_STACK, %sp
+    mov $BOOT_STACK, %esp
 #endif
 
     mov %ax, %es

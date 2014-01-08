@@ -120,7 +120,6 @@ pxe_tftp_read:
     .word 0
 
 current_file:       .byte -1 // -1 indicates no open file.
-current_file_size:  .long 0  // Size.
 
 .text
 
@@ -290,10 +289,17 @@ storage_init:
  *
  * Returns: 
  *     ecx -> size of the file.
- *     Carry set on error.
+ *     eax -> error code.
+ *            0 indicates no error.
+ *         higher word: 1 - some file already open.
+ *                      2 - error in tftp get size.
+ *                      3 - error in tftp open.
+ *         lower word: 0xFFFF if some file already open.
+ *                     PXE status otherwise.
  */
 .global file_open
 file_open:
+    xor %eax, %eax
     pushal
     push %ds
 
@@ -337,7 +343,7 @@ file_open:
     call pxe_api
 
     orw (pxe_tftp_open), %ax
-    jnz .open_error
+    jnz .open_fsize_error
 
     mov (pxe_tftp_open + tftp_open_port), %ecx
     mov %ecx, 26(%esp) /* store ECX on stack. */
@@ -350,16 +356,28 @@ file_open:
     call pxe_api
 
     orw (pxe_tftp_open), %ax
-    jnz .open_error
+    jnz .open_fopen_error
 
-    clc
+    movb $0, (current_file)
     .open_ret:
         pop %ds
         popal
         ret
 
     .open_error:
-        stc
+        movl $0x0001FFFF, 30(%esp)
+        jmp .open_ret
+
+    .open_fsize_error:
+        movzwl (pxe_tftp_open), %eax
+        or $0x00020000, %eax
+        movl %eax, 30(%esp)
+        jmp .open_ret
+
+    .open_fopen_error:
+        movzwl (pxe_tftp_open), %eax
+        or $0x00030000, %eax
+        movl %eax, 30(%esp)
         jmp .open_ret
 
 /*
@@ -368,10 +386,14 @@ file_open:
  *     ecx -> the number of bytes to read.
  *
  * Returns: 
- *     Carry set on error.
+ *     eax -> error code.
+ *            0 indicates no error.
+ *         higher word: 1 on error in tftp read.
+ *         lower word: PXE status on error.
  */
 .global file_read
 file_read:
+    xor %eax, %eax
     pushal
 
     .read:
@@ -401,33 +423,37 @@ file_read:
 
         movzwl (pxe_tftp_read + tftp_read_buffer_size), %edx
         cmp $PACKET_SIZE, %edx
-        jb .success
+        jb .read_ret
 
         add %edx, %edi
         cmp %edx, %ecx
-        jbe .success
+        jbe .read_ret
 
         sub %edx, %ecx
         jmp .read
 
-    .success:
-        clc
     .read_ret:
         popal
         ret
 
     .read_error:
-        stc
+        movzwl (pxe_tftp_read), %eax
+        or $0x00010000, %eax
+        mov %eax, 28(%esp)
         jmp .read_ret
 
 /*
  * Close the currently open file.
  *
  * Returns: 
- *     Carry set on error.
+ *     eax -> error code.
+ *            0 indicates no error.
+ *         higher word: 1 on error in tftp close.
+ *         lower word: PXE status on error.
  */
 .global file_close  
 file_close:
+    xor %eax, %eax
     pushal
 
     movw $0, (pxe_tftp_open)
@@ -440,12 +466,12 @@ file_close:
     jnz .close_error
 
     movb $-1, (current_file)
-
-    clc
     .close_ret:
         popal
         ret
 
     .close_error:
-        stc
+        movzwl (pxe_tftp_open), %eax
+        or $0x00010000, %eax
+        mov %eax, 28(%esp)
         jmp .close_ret
