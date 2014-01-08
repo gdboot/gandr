@@ -46,7 +46,7 @@ rule BiosStage1 {
     }
 
     ObjectDefines $(objs) : $(def) ;
-    LinkWithScript $(<).elf : $(objs) : [ FDirName $(GD_TOP) bal platform bios stage1 link.ld ] ;
+    LinkWithScript $(<).elf : $(objs) : [ FDirName $(GD_TOP) bal platform bios stage1 $(2) link.ld ] ;
     ObjCopy $(<) : $(<).elf : -O binary ;
     DEPENDS exe : $(<) ; 
 }
