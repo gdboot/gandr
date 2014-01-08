@@ -13,6 +13,8 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <bal/bios_services.h>
+
 /*
  * Stage 1 (disk dependent, firmware dependent) initialization code.
  */
@@ -125,3 +127,40 @@ reset_cs:
     .error_not_386:
         /* TODO: ERROR. */
         jmp .hlt
+
+
+.text
+Lgo_stage2:
+    // Find highest point in conventional memory - that will be our new stack
+    int $0x12
+    movzx %ax, %eax
+    shl $10, %eax
+
+    // Stick the right segment in the jump pointer structure
+    mov bal_is_64bit, %bl
+    mov $PM_CS32, %cx
+    test %bl, %bl
+    jnz Lnot_64bit
+    mov $PM_CS64, %cx
+Lnot_64bit:
+    mov %cx, stage2_entry+4
+
+    // TOOD: Find entrypoint of stage2
+    // That goes into the jump pointer structure :-)
+    // movl (...), stage2_entry
+
+    // Setup (64/32-bit) protected mode and go
+    call rm_to_pm16
+    mov PM_DS32, %cx
+    mov %cx, %ds
+    mov %cx, %es
+    mov %cx, %fs
+    mov %cx, %gs
+    mov %cx, %ss
+    mov %eax, %esp
+
+    mov $api_table, %edi
+    data32 ljmp *stage2_entry
+
+    .comm stage2_entry, 6
+    .comm bal_is_64bit, 1
