@@ -39,7 +39,6 @@
 
 MEMORY
 {
-    TI_HEADER :   o = 0x402F03F8,  l = 0x08          /* 8 byte image header */
     IRAM_MEM  :   o = 0x402F0400,  l = 0x1FBFF       /* 127k internal Memory */
 }
 
@@ -49,9 +48,10 @@ OUTPUT_ARCH(arm)
 SECTIONS
 {
     .ti_hdr : {
+        _start = .;
         LONG(_image_size);
-        LONG(_entry);
-    } >TI_HEADER
+        LONG(_start);
+    } >IRAM_MEM
 
     .text :
     {
@@ -82,6 +82,6 @@ SECTIONS
         _bss_end = .;
     } >IRAM_MEM
 
-    _image_size = _end - _entry;
+    _image_size = _end - _start;
 }
 

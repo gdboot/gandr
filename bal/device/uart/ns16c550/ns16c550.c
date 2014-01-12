@@ -77,7 +77,7 @@ void ns16c550_txbyte(ns16c550_dev *dev, char c)
 {
     // Check FIFO level
     do {
-        if(rdreg(dev, UART_LSR) & LSR_TX_FIFO_EMPTY) {
+        if(rdreg(dev, UART_LSR) & LSR_TX_SR_EMPTY) {
             // It is - reset the FIFO space variable
             dev->fifo_space = dev->fifo_size;
         }

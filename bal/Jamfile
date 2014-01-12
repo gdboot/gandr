@@ -15,4 +15,4 @@ SubIncludeOnce GD_TOP bal platform $(PLATFORM) ;
 
 SubDir GD_TOP bal ;
 
-#GdBalBinaries ;
+GdBalBinaries ;
