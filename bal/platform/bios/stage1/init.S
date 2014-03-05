@@ -22,7 +22,8 @@
 .code16
 .section base.start
 
-#define BOOT_STACK  0x8000
+#define BOOT_STACK          0x8000
+#define BAL_LOAD_ADDRESS    0x10000
 
 /*
  * Entry point.
@@ -59,11 +60,11 @@ eltorito_info:
     mov $0x7C00, %si
     
 #ifdef BD_PXE
-    mov 0x2000 - 0x0600, %cx
+    mov $(0x2000 - 0x0600), %ecx
 #elif defined(BD_ELTORITO)
-    mov $2048, %cx
+    mov $2048, %ecx
 #else
-    mov $512, %cx
+    mov $512, %ecx
 #endif
 
     cld
@@ -120,14 +121,87 @@ reset_cs:
     // Enable A20 gate.
     call a20_enable
 
+    pushfl
+    pop %eax
+    mov %eax, %ecx
+
+    // CPUID only supportable if bit 21 is modifiable.
+    xor $0x20, %ah
+    push %eax
+    popfl
+
+    pushfl
+    pop %eax
+    xor %ecx, %eax
+    and $0x20, %ah
+    jz .no_cpuid
+
+    // CPUID is supported, figure out if 64-bit is supported.
+    // Test for extended function 1.
+    mov $0x80000000, %eax
+    cpuid
+    cmp $0x80000001, %eax
+    jb .no_long_mode
+
+    mov $0x80000001, %eax
+    cpuid
+    // Test LM bit.
+    test $(1 << 29), %edx
+    jz .no_long_mode
+
+    movw $0x3436 /*64*/, bal + 3
+    mov $bal, %esi
+    call file_open
+
+#ifdef BD_PXE
+    cmp $0x3B /* PXENV_STATUS_TFTP_FILE_NOT_FOUND */, %ax
+#else
+#error Boot device not defined.
+#endif
+    je .no_long_mode
+    test %eax, %eax
+    jnz .error_open_bal
+
+    movb $1, bal_is_64bit
+    jmp .read_bal
+
+    .no_long_mode:
+    .no_cpuid:
+        movb $0, bal_is_64bit
+        movw $0x3233 /* 32 */, bal + 3
+        mov $bal, %esi
+        call file_open
+
+#ifdef BD_PXE
+        cmp $0x3B /* PXENV_STATUS_TFTP_FILE_NOT_FOUND */, %ax
+#else
+#error Boot device not defined.
+#endif
+        je .error_no_bal
+        test %eax, %eax
+        jnz .error_open_bal
+
+    // Read BAL, size in ECX.
+    .read_bal:
+        mov $BAL_LOAD_ADDRESS, %edi
+        call file_read
+
+        test %eax, %eax
+        jnz .error_read_bal
+
+//    jmp Lgo_stage2
+
+    .error_not_386:
+    .error_open_bal:
+    .error_read_bal:
+    .error_no_bal:
     .hlt:
+        /* TODO: ERROR. */
         hlt
         jmp .hlt
 
-    .error_not_386:
-        /* TODO: ERROR. */
-        jmp .hlt
-
+bal: .ascii "bal  "
+     .byte 0
 
 .text
 Lgo_stage2:

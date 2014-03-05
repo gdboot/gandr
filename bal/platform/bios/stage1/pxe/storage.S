@@ -370,13 +370,13 @@ file_open:
 
     .open_fsize_error:
         movzwl (pxe_tftp_open), %eax
-        or $0x00020000, %eax
+        or $0x0002, %ah
         movl %eax, 30(%esp)
         jmp .open_ret
 
     .open_fopen_error:
         movzwl (pxe_tftp_open), %eax
-        or $0x00030000, %eax
+        or $0x0003, %ah
         movl %eax, 30(%esp)
         jmp .open_ret
 

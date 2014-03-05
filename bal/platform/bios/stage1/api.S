@@ -98,4 +98,3 @@ api_int_call:
     movl stack_top - 4, %esp
     // Jump back into (32-bit/64-bit) code
     lretl
-

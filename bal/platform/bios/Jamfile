@@ -1,7 +1,7 @@
 SubDir GD_TOP bal platform bios ;
 
 GdBalSources
-	bios_services.c
+    init.c
 	;
 
 SubIncludeOnce GD_TOP bal platform bios stage1 ;
