@@ -13,10 +13,6 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Disk module (for PXE).
- */
-
 .code16
 .data
 
@@ -118,8 +114,6 @@ pxe_tftp_read:
     .word 0
     .word 0
     .word 0
-
-current_file:       .byte -1 // -1 indicates no open file.
 
 .text
 
@@ -289,13 +283,7 @@ storage_init:
  *
  * Returns: 
  *     ecx -> size of the file.
- *     eax -> error code.
- *            0 indicates no error.
- *         higher word: 1 - some file already open.
- *                      2 - error in tftp get size.
- *                      3 - error in tftp open.
- *         lower word: 0xFFFF if some file already open.
- *                     PXE status otherwise.
+ *     Aborts boot on error.
  */
 .global file_open
 file_open:
@@ -323,10 +311,6 @@ file_open:
 
     xor %ax, %ax
     mov %ax, %ds    
-
-    // If any file is open, error.
-    cmpb $-1, (current_file)
-    jne .open_error
 
     // Initialize pxe_tftp_open structure.
     movw %ax, (pxe_tftp_open)
@@ -358,27 +342,16 @@ file_open:
     orw (pxe_tftp_open), %ax
     jnz .open_fopen_error
 
-    movb $0, (current_file)
     .open_ret:
         pop %ds
         popal
         ret
 
-    .open_error:
-        movl $0x0001FFFF, 30(%esp)
-        jmp .open_ret
-
     .open_fsize_error:
-        movzwl (pxe_tftp_open), %eax
-        or $0x0002, %ah
-        movl %eax, 30(%esp)
-        jmp .open_ret
-
     .open_fopen_error:
-        movzwl (pxe_tftp_open), %eax
-        or $0x0003, %ah
-        movl %eax, 30(%esp)
-        jmp .open_ret
+        /* TODO: Error handling. */
+        hlt        
+        jmp .open_fsize_error
 
 /*
  * Reads the currently open file.
@@ -386,10 +359,7 @@ file_open:
  *     ecx -> the number of bytes to read.
  *
  * Returns: 
- *     eax -> error code.
- *            0 indicates no error.
- *         higher word: 1 on error in tftp read.
- *         lower word: PXE status on error.
+ *     Aborts boot on error.
  */
 .global file_read
 file_read:
@@ -437,19 +407,15 @@ file_read:
         ret
 
     .read_error:
-        movzwl (pxe_tftp_read), %eax
-        or $0x00010000, %eax
-        mov %eax, 28(%esp)
-        jmp .read_ret
+        /* TODO: Error handling. */
+        hlt
+        jmp .read_error
 
 /*
  * Close the currently open file.
  *
  * Returns: 
- *     eax -> error code.
- *            0 indicates no error.
- *         higher word: 1 on error in tftp close.
- *         lower word: PXE status on error.
+ *     Aborts boot on error.
  */
 .global file_close  
 file_close:
@@ -465,13 +431,11 @@ file_close:
     orw (pxe_tftp_open), %ax
     jnz .close_error
 
-    movb $-1, (current_file)
     .close_ret:
         popal
         ret
 
     .close_error:
-        movzwl (pxe_tftp_open), %eax
-        or $0x00010000, %eax
-        mov %eax, 28(%esp)
-        jmp .close_ret
+        /* TODO: Error handling. */
+        hlt
+        jmp .close_error
