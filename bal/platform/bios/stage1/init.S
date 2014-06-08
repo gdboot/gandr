@@ -148,16 +148,8 @@ reset_cs:
     mov $bal, %esi
     call file_open
 
-#ifdef BD_PXE
-    cmp $0x3B /* PXENV_STATUS_TFTP_FILE_NOT_FOUND */, %ax
-#elif defined(BD_ELTORITO)
-    #warning Incomplete.
-#else
-#error Boot device not defined.
-#endif
-    je .no_long_mode
     test %eax, %eax
-    jnz .error_open_bal
+    jne .no_long_mode
 
     movb $1, bal_is_64bit
     jmp .read_bal
@@ -169,16 +161,8 @@ reset_cs:
         mov $bal, %esi
         call file_open
 
-#ifdef BD_PXE
-        cmp $0x3B /* PXENV_STATUS_TFTP_FILE_NOT_FOUND */, %ax
-#elif defined(BD_ELTORITO)
-        #warning Incomplete.
-#else
-#error Boot device not defined.
-#endif
-        je .error_no_bal
         test %eax, %eax
-        jnz .error_open_bal
+        jne .error_no_bal
 
     // Read BAL, size in ECX.
     .read_bal:

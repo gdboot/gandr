@@ -38,6 +38,8 @@ pxe_flags:
 #define TFTP_READ       0x22
 #define TFTP_GET_FSIZE  0x25
 
+#define PXENV_STATUS_TFTP_FILE_NOT_FOUND 0x3B
+
 #define PACKET_SIZE     512         //!< 512 bytes is most supported.
 #define UDP_PORT        (69 << 8)   //!< 69 << 8 in big endian, word.
 
@@ -277,7 +279,7 @@ storage_init:
 /*! Opens a file to be read from.
  *      \param esi points to the file name
  *      \return size of file in ecx.
- *              Aborts boot on error.
+ *              If file not found, eax non-zero. Else, aborts boot on error.
  */
 .global file_open
 file_open:
@@ -343,9 +345,16 @@ file_open:
 
     .open_fsize_error:
     .open_fopen_error:
+        cmpw $PXENV_STATUS_TFTP_FILE_NOT_FOUND, (pxe_tftp_open)
+        jne .abort
+
+        movl $-1, 30(%esp)
+        jmp .open_ret
+
+    .abort:
         /* TODO: Error handling. */
         hlt        
-        jmp .open_fsize_error
+        jmp .abort
 
 /*! Reads the currently open file.
  *      \param edi where to read the file to
@@ -354,7 +363,6 @@ file_open:
  */
 .global file_read
 file_read:
-    xor %eax, %eax
     pushal
 
     .read:
@@ -407,7 +415,6 @@ file_read:
  */
 .global file_close  
 file_close:
-    xor %eax, %eax
     pushal
 
     movw $0, (pxe_tftp_open)

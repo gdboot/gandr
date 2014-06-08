@@ -223,7 +223,7 @@ storage_init:
 /*! Opens a file to be read from.
  *      \param esi points to the file name
  *      \return ecx contains size of the file.
- *              Aborts boot on error.        
+ *              If file not found, eax non-zero. Else, aborts boot on error.
  */
 .global file_open
 file_open:
