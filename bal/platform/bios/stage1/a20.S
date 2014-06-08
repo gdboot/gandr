@@ -16,28 +16,22 @@
 .code16
 .text
 
-/*
- * Waits till input buffer is clear.
- */
+//! Wait till keyboard input buffer is clear.
 kyb_wait_input_buf:
     in $0x64, %al
     test $2, %al    // If second bit is 0, then empty.
     jnz kyb_wait_input_buf
     ret
 
-/*
- * Waits till output buffer is clear.
- */
+//! Waits till keyboard output buffer is clear.
 kyb_wait_output_buf:
     in $0x64, %al
     test $1, %al    // If first bit is 0, then empty.
     jnz kyb_wait_output_buf
     ret
 
-/*
- * Tries to enable A20.
- * 
- * Errors if can't do so.
+/*! Try to enable A20.
+ *      \return Aborts boot on failure.
  */
 .global a20_enable
 a20_enable:
@@ -107,11 +101,8 @@ a20_enable:
         hlt
         jmp .error
 
-/*
- * Checks the status of the A20 line.
- *
- * Returns:
- *     Carry set if the A20 line is enabled.
+/*! Checks the status of the A20 line.
+ *      \return Carry set if the A20 line is enabled.
  */
 a20_check:
     push %si
@@ -129,7 +120,7 @@ a20_check:
     movb %al, %es:(%di) // Write 0xFF at 0x100504 to see if it overwrites 0x504.
 
     lodsb
-    cmp %ah, %al      // If overwritten, then A20 isn't enabled.
+    cmp %ah, %al      // If overwritten, then A20 is not enabled.
     je .disabled
 
     stc

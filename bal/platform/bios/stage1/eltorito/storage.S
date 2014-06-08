@@ -13,21 +13,19 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Disk module (for eltorito).
- */
-
 .code16
 
-// The boot information table (passed by mkisofs) structure.
+//! The boot information table (passed by mkisofs) structure.
     .struct 0
 eltorito_info_pvd_lba:
     .struct eltorito_info_pvd_lba + 4
 eltorito_info_stage1_lba:
     .struct eltorito_info_stage1_lba + 4
 eltorito_info_stage1_size:
+    .struct eltorito_info_stage1_size + 4
+eltorito_info_checksum:
 
-// The LBA packet structure.
+//! The LBA packet structure.
     .struct 0
 lba_packet_size:
     .struct lba_packet_size + 2
@@ -53,10 +51,10 @@ lba_packet:
     .long 0
     .long 0
 
-/*
- * Checks if int 0x13 extensions are supported or not.
- *
- * Errors out if not supported.
+.equ PVD_BUFFER, 0x2000
+
+/*! Checks if int 0x13 extensions are supported or not.
+ *      \return Aborts boot on error.
  */
 int13_extensions_check:
     pushal
@@ -79,15 +77,12 @@ int13_extensions_check:
         hlt
         jmp .no_int13_ext
 
-/*
- * Does a read via int 0x13 extensions.
- *     cx -> number of blocks to read.
- *     edi -> destination.
- *     ebx -> lba to read from.
- *
- * Returns:
- *     ah and cf as set by int $0x13.
- *     ecx to number of blocks transferred.
+/*! Does a read via int 0x13 extensions.
+ *      \param cx number of blocks to read
+ *      \param edi destination
+ *      \param ebx lba to read from
+ *      \return ah and cf as set by int $0x13.
+ *              ecx set to number of blocks transferred.
  */
 int13_ext_read:
     push %dx
@@ -116,17 +111,11 @@ int13_ext_read:
     pop %dx
     ret
 
-/*
- * Does a read via int 0x13 extensions.
- *     ecx -> number of blocks to read.
- *     edi -> destination.
- *     ebx -> lba to read from.
- *
- * Returns:
- *     eax -> error code.
- *            0 indicates no error.
- *         higher word: 1 - error in int 0x13.
- *         lower word: BIOS error code.
+/*! Does a read via int 0x13 extensions.
+ *      \param ecx number of blocks to read
+ *      \param edi destination
+ *      \param ebx lba to read from
+ *      \return BIOS error code, if any, in eax.
  */
 storage_read:
     xor %eax, %eax
@@ -178,13 +167,11 @@ storage_read:
 
     .storage_read_error:
         movzbl %ah, %eax
-        or $0x00010000, %eax
         mov %eax, 32(%esp)
         jmp .storage_read_ret
 
-/*
- * Initialize disk.
- *     dl -> boot drive.
+/*! Initialize disk.
+ *      \param dl boot drive
  */
 .global storage_init
 storage_init:
@@ -211,13 +198,55 @@ storage_init:
 
     call storage_read
     test %eax, %eax
-    jnz .init_error
+    jnz .read_error
 
     0:
+    // Read PVD.
+    mov $1, %ecx
+    mov (eltorito_info + eltorito_info_pvd_lba), %ebx
+    mov $PVD_BUFFER, %edi
+
+    call storage_read
+    test %eax, %eax
+    jnz .read_error
+
+    
+
     popal
     ret
 
-    .init_error:
+    .read_error:
         /* TODO: ERROR. */
         hlt
-        jmp .init_error
+        jmp .read_error
+
+/*! Opens a file to be read from.
+ *      \param esi points to the file name
+ *      \return ecx contains size of the file.
+ *              Aborts boot on error.        
+ */
+.global file_open
+file_open:
+    xor %eax, %eax
+    not %eax
+    ret
+
+/*! Reads the currently open file.
+ *      \param edi where to read the file to
+ *      \param ecx the number of bytes to read
+ *      \return Aborts boot on error.
+ */
+.global file_read
+file_read:
+    xor %eax, %eax
+    not %eax
+    ret
+
+/*! Close the currently open file.
+ *      \return Aborts boot on error.
+ */
+.global file_close  
+file_close:
+    xor %eax, %eax
+    not %eax
+    ret

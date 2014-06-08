@@ -13,23 +13,15 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * String functions.
- */
-
 .code16
 .text
 
-/*
- * Copies n characters, unless source string terminates.
- * Doesn't handle segment overflow on destination. FIX if needed.
- *
- *     ds:si -> source.
- *     es:di -> destination.
- *     cx -> maximum limit.
- *
- * Returns:
- *     Incremented ds:si, es:di.
+/*! Copies n characters, unless source string terminates.
+ *  Doesn't handle segment overflow on destination. FIX if needed.
+ *      \param ds:si source
+ *      \param es:di destination
+ *      \param cx maximum limit
+ *      \return Incremented ds:si, es:di.
  */
 .global strncpy
 strncpy:

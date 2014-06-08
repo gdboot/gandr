@@ -13,16 +13,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-/*
- * Output module.
- */
-
 .code16
 .section base
 
-/*
- * Initiates output, disables the hardware cursor.
- */
+//! Initiates output, disables the hardware cursor.
 .global output_init
 output_init:
     pushal
@@ -63,9 +57,8 @@ output_init:
     popal
     ret
 
-/*
- * Outputs a null terminated string.
- *     es:si -> point to null terminated string.
+/*! Outputs a null terminated string.
+ *      \param es:si point to null terminated string
  */
 .global output_string
 output_string:
@@ -102,9 +95,8 @@ hexadecimal_buffer:
     .byte '0', 'x', 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30
     .byte 0x00
 
-/*
- * Outputs a hexadecimal value.
- *     eax -> value to output.
+/*! Outputs a hexadecimal value.
+ *      \param eax value to output
  */
 .global output_hexadecimal
 output_hexadecimal:
@@ -121,7 +113,7 @@ output_hexadecimal:
         mov %al, %bl
         and $0x0F, %bl
 
-        // If it's a greater than 9, than add 7 to get 'A' (0x41).
+        // If it is greater than 9, then add 7 to get 'A' (0x41).
         cmp $9, %bl
         jbe .numeric
 

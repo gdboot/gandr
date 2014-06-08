@@ -1,4 +1,4 @@
-/* Copyright © 2013-2014, Shikhin Sethi
+/* Copyright © 2013-2014, Owen Shepherd & Shikhin Sethi
  * 
  * Permission to use, copy, modify, and/or distribute this software for any 
  * purpose with or without fee is hereby granted, provided that the above 
@@ -15,20 +15,15 @@
 
 #include <bal/bios_services.h>
 
-/*
- * Stage 1 (disk dependent, firmware dependent) initialization code.
- */
-
 .code16
 .section base.start
 
 #define BOOT_STACK          0x8000
 #define BAL_LOAD_ADDRESS    0x10000
 
-/*
- * Entry point.
- *     dl -> the drive number.
- *     cs:ip -> the linear address 0x7C00.
+/*! Entry point.
+ *      \param dl the drive number
+ *      \param cs:ip the linear address 0x7C00
  */
 .global _start
 _start:
@@ -155,6 +150,8 @@ reset_cs:
 
 #ifdef BD_PXE
     cmp $0x3B /* PXENV_STATUS_TFTP_FILE_NOT_FOUND */, %ax
+#elif defined(BD_ELTORITO)
+    #warning Incomplete.
 #else
 #error Boot device not defined.
 #endif
@@ -174,6 +171,8 @@ reset_cs:
 
 #ifdef BD_PXE
         cmp $0x3B /* PXENV_STATUS_TFTP_FILE_NOT_FOUND */, %ax
+#elif defined(BD_ELTORITO)
+        #warning Incomplete.
 #else
 #error Boot device not defined.
 #endif

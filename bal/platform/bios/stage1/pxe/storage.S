@@ -38,10 +38,10 @@ pxe_flags:
 #define TFTP_READ       0x22
 #define TFTP_GET_FSIZE  0x25
 
-#define PACKET_SIZE     512         // 512 bytes is most supported.
-#define UDP_PORT        (69 << 8)   // 69 << 8 in big endian, word.
+#define PACKET_SIZE     512         //!< 512 bytes is most supported.
+#define UDP_PORT        (69 << 8)   //!< 69 << 8 in big endian, word.
 
-// The PXENV_GET_CACHED_INFO structure.
+//! The PXENV_GET_CACHED_INFO structure.
     .struct 0
 cached_info_status:
     .struct cached_info_status + 2
@@ -72,7 +72,7 @@ pxe_cached_info:
     .long 0
     .long 0
 
-// The PXENV_TFTP_OPEN structure.
+//! The PXENV_TFTP_OPEN structure.
     .struct 0
 tftp_open_status:
     .struct tftp_open_status + 2
@@ -95,7 +95,7 @@ pxe_tftp_open:
     .word 0
     .word 0
 
-// The PXENV_TFTP_READ structure.
+//! The PXENV_TFTP_READ structure.
     .struct 0
 tftp_read_status:
     .struct tftp_read_status + 2
@@ -117,10 +117,9 @@ pxe_tftp_read:
 
 .text
 
-/*
- * Call the PXE API (both before 2.1 and after).
- *     ds:di -> the address of the input buffer.
- *     bx -> the "opcode".
+/*! Call the PXE API (both before 2.1 and after).
+ *      \param ds:di the address of the input buffer
+ *      \param bx the "opcode"
  */
 pxe_api:
     push %ecx
@@ -145,12 +144,10 @@ pxe_api:
     pop %ecx
     ret
 
-/*
- * Initialize PXE.
- *     es:bx -> the PXENV+ structure.
- *     ss:sp + 4 -> the !PXE structure (if valid).
- *
- * Trashes bp.
+/*! Initialize PXE.
+ *      \param es:bx the PXENV+ structure
+ *      \param ss:sp + 4 the !PXE structure (if valid)
+ *      \return Trashes bp.
  */
 .global storage_init
 storage_init:
@@ -277,13 +274,10 @@ storage_init:
         hlt
         jmp .error_no_pxe
 
-/*
- * Opens a file to be read from.
- *     esi -> points to the file name.
- *
- * Returns: 
- *     ecx -> size of the file.
- *     Aborts boot on error.
+/*! Opens a file to be read from.
+ *      \param esi points to the file name
+ *      \return size of file in ecx.
+ *              Aborts boot on error.
  */
 .global file_open
 file_open:
@@ -353,13 +347,10 @@ file_open:
         hlt        
         jmp .open_fsize_error
 
-/*
- * Reads the currently open file.
- *     edi -> where to read the file to.
- *     ecx -> the number of bytes to read.
- *
- * Returns: 
- *     Aborts boot on error.
+/*! Reads the currently open file.
+ *      \param edi where to read the file to
+ *      \param ecx the number of bytes to read
+ *      \return Aborts boot on error.
  */
 .global file_read
 file_read:
@@ -411,11 +402,8 @@ file_read:
         hlt
         jmp .read_error
 
-/*
- * Close the currently open file.
- *
- * Returns: 
- *     Aborts boot on error.
+/*! Close the currently open file.
+ *      \return Aborts boot on error.
  */
 .global file_close  
 file_close:

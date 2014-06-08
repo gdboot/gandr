@@ -29,9 +29,9 @@ pm_cr0_mask:    .long ~0x00000001
                 .section .text
                 .global rm_to_pm16, pm16_to_rm
 
-// Switch to PM16
-// Includes reloading all segment registers
-// FS will be set to DS32
+//! Switch to PM16
+//! Includes reloading all segment registers
+//! FS will be set to DS32
 rm_to_pm16:     pushf
                 cli
                 push %eax
@@ -53,8 +53,8 @@ rm_to_pm16:     pushf
                 popf
                 ret
 
-// Switch from PM16 to RM
-// All segments will be reloaded with 16-bit limits
+//! Switch from PM16 to RM
+//! All segments will be reloaded with 16-bit limits
 pm16_to_rm:     pushf
                 cli
                 push %eax
@@ -80,5 +80,3 @@ pm16_to_rm:     pushf
 1:              pop %eax
                 popf
                 ret
-
-
