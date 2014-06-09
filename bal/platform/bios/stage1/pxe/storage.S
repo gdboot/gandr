@@ -160,10 +160,10 @@ storage_init:
     pushal
 
     // Check PXENV signature.
-    cmpl $0x4E455850 /*PXEN*/, %es:(%bx)
+    cmpl $0x4E455850 /* PXEN */, %es:(%bx)
     jne .error_no_pxe
 
-    cmpw $0x2B56 /*V+*/, %es:4(%bx)
+    cmpw $0x2B56 /* V+ */, %es:4(%bx)
     jne .error_no_pxe
 
     // Get the size of the structure (bx + 4) in ecx.
@@ -186,7 +186,7 @@ storage_init:
     pop %bx
     // If version is greater than 2.1, try !PXE.
     cmpw $0x0201, %es:6(%bx)
-    jge .new_version
+    jae .new_version
 
     .pxenv:
         mov %es:0x0A(%bx), %ecx
@@ -204,7 +204,7 @@ storage_init:
         mov %ss:2(%bp), %bx
         mov %ax, %es
 
-        cmpl $0x45585021 /*!PXE*/, %es:(%bx)
+        cmpl $0x45585021 /* !PXE */, %es:(%bx)
         jne .error_new_pxe
 
         movzbl %es:4(%bx), %ecx
@@ -348,8 +348,11 @@ file_open:
         cmpw $PXENV_STATUS_TFTP_FILE_NOT_FOUND, (pxe_tftp_open)
         jne .abort
 
-        movl $-1, 30(%esp)
-        jmp .open_ret
+        // Error out.
+        pop %ds
+        popal
+        not %eax
+        ret
 
     .abort:
         /* TODO: Error handling. */

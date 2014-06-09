@@ -11,14 +11,14 @@ rule GdBalBinaries {
         bits = 64 ;
     }
 
-    local name = gd_bal$(bits) ;
+    local name = gd_bal.$(bits) ;
 
     local script = [ FDirName $(GD_TOP) bal platform bios bal$(bits).ld ] ;
 
     LinkWithScript $(name).elf : $(GD_BAL_OBJECTS) : $(script) ;
     #LinkLibraries $(name).elf : $(PDCLIB) ;
-    ObjCopy $(name).bin : $(name).elf : -O binary ;
-    Depends exe : $(name).bin ;
+    ObjCopy $(name) : $(name).elf : -O binary ;
+    Depends exe : $(name) ;
 }
 
 # BiosStage1 output : name ;

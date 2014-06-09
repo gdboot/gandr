@@ -39,6 +39,46 @@ lba_packet_lba_low:
     .struct lba_packet_lba_low + 4
 lba_packet_lba_high:
 
+//! The PVD structure.
+    .struct 0
+pvd:
+    .struct pvd + 0
+pvd_type_code:
+    .struct pvd + 1
+pvd_identifier:
+    .struct pvd + 6
+pvd_version:
+    .struct pvd + 128
+pvd_logical_block_size:
+    .struct pvd + 156
+pvd_root_directory_entry:
+
+//! Directory record structure.
+    .struct 0
+directory_record:
+    .struct directory_record + 0
+directory_record_length:
+    .struct directory_record + 1
+directory_record_xar_length:
+    .struct directory_record + 2
+directory_record_lba:
+    .struct directory_record + 10
+directory_record_data_length:
+    .struct directory_record + 25
+directory_record_file_flags:
+    .struct directory_record + 26
+directory_record_file_unit_size:
+    .struct directory_record + 27
+directory_record_interleave_gap:
+    .struct directory_record + 32
+directory_record_file_identifier_len:
+    .struct directory_record + 33
+directory_record_file_identifier:
+
+#define DIRREC_FLAG_DIR                 (1 << 1)
+#define DIRREC_FLAG_XAR_RECORD          (1 << 3)
+#define DIRREC_FLAG_MULTIPLE_RECORDS    (1 << 7)
+
 .section base
 
 boot_drive: .byte 0
@@ -51,6 +91,7 @@ lba_packet:
     .long 0
     .long 0
 
+.equ SECTOR_SIZE, 2048
 .equ PVD_BUFFER, 0x2000
 
 /*! Checks if int 0x13 extensions are supported or not.
@@ -170,6 +211,91 @@ storage_read:
         mov %eax, 32(%esp)
         jmp .storage_read_ret
 
+/*! Check a directory for a particular record.
+ *      \param di Pointer to a (valid) directory record.
+ *      \param ds:si Record identifier.
+ *      \return di points to the directory record.
+                eax ~0 on record not found, other non-zero values for disk
+                failure.
+ */
+find_directory_record:
+    xor %eax, %eax
+    pushal
+
+    call strlen
+    push %ecx
+
+    movl directory_record_lba(%di), %ebx
+    add directory_record_xar_length(%di), %ebx
+    movl directory_record_data_length(%di), %edx
+
+    .load_sector:
+        mov $(PVD_BUFFER + SECTOR_SIZE), %edi
+        mov $1, %ecx
+        call storage_read
+        test %eax, %eax
+        jnz .disk_error
+
+        .check_record:
+            // Zero-length record means next-sector wrapover.
+            cmpb $0, directory_record_length(%di)
+            je .next_sector
+
+            movl (%esp), %ecx
+            cmpb directory_record_file_identifier_len(%di), %cl
+            jne .next_record
+
+            xor %bp, %bp
+            .string_cmp:
+                mov (%bp, %si), %al
+                call toupper
+                cmp directory_record_file_identifier(%bp, %di), %al
+                jne .next_record
+
+                inc %bp
+                cmp %cx, %bp
+                jb .string_cmp
+
+            // Found.
+            movl 4(%esp), %edi
+            jmp .success
+
+        .next_record:
+            movzbl (%di), %ecx
+            add %cx, %di
+
+            cmp $(PVD_BUFFER + SECTOR_SIZE), %di
+            jae .next_sector
+
+            lea PVD_BUFFER(%edx), %ecx
+            cmp %cx, %di
+            jae .not_found
+
+            jmp .check_record
+
+    .next_sector:
+        // Last sector.
+        cmp $SECTOR_SIZE, %edx
+        jbe .not_found
+
+        sub $SECTOR_SIZE, %edx
+        inc %ebx
+        jmp .load_sector
+
+    .disk_error:
+        movl 32(%esp), %eax
+
+    .success:
+        add $4, %esp
+        popal
+        ret
+
+    .not_found:
+        add $4, %esp
+        popal
+        not %eax
+        ret
+
 /*! Initialize disk.
  *      \param dl boot drive
  */
@@ -210,12 +336,14 @@ storage_init:
     test %eax, %eax
     jnz .read_error
 
-    
+    cmpl $SECTOR_SIZE, (PVD_BUFFER + pvd_logical_block_size)
+    jne .block_size_error
 
     popal
     ret
 
     .read_error:
+    .block_size_error:
         /* TODO: ERROR. */
         hlt
         jmp .read_error

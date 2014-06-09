@@ -16,6 +16,42 @@
 .code16
 .text
 
+/*! Converts character to uppercase.
+ *      \param al character.
+ *      \return al contains the uppercase character.
+ */
+.global toupper
+toupper:
+     cmp $'a', %al
+     jb .converted
+     cmp $'z', %al
+     ja .converted
+
+     add $('A' - 'a'), %al
+     .converted:
+        ret
+
+/*! Gets the length of the string.
+ *      \param ds:si source
+ *      \return Length of string in ecx.
+ */
+.global strlen
+strlen:
+    push %si
+
+    xor %ecx, %ecx
+    0:
+        lodsb
+        test %al, %al
+        jz .return
+
+        inc %ecx
+        jmp 0b
+
+    .return:
+        pop %si
+        ret
+
 /*! Copies n characters, unless source string terminates.
  *  Doesn't handle segment overflow on destination. FIX if needed.
  *      \param ds:si source

@@ -144,7 +144,7 @@ reset_cs:
     test $(1 << 29), %edx
     jz .no_long_mode
 
-    movw $0x3436 /*64*/, bal + 3
+    movw $0x3436 /* 64 */, bal + 7
     mov $bal, %esi
     call file_open
 
@@ -157,7 +157,7 @@ reset_cs:
     .no_long_mode:
     .no_cpuid:
         movb $0, bal_is_64bit
-        movw $0x3233 /* 32 */, bal + 3
+        movw $0x3233 /* 32 */, bal + 7
         mov $bal, %esi
         call file_open
 
@@ -169,21 +169,17 @@ reset_cs:
         mov $BAL_LOAD_ADDRESS, %edi
         call file_read
 
-        test %eax, %eax
-        jnz .error_read_bal
-
 //    jmp Lgo_stage2
 
     .error_not_386:
     .error_open_bal:
-    .error_read_bal:
     .error_no_bal:
     .hlt:
         /* TODO: ERROR. */
         hlt
         jmp .hlt
 
-bal: .ascii "bal  "
+bal: .ascii "gd_bal.  "
      .byte 0
 
 .text
