@@ -53,7 +53,7 @@ strlen:
         ret
 
 /*! Copies n characters, unless source string terminates.
- *  Doesn't handle segment overflow on destination. FIX if needed.
+ *  NOTE: doesn't handle segment overflow on destination.
  *      \param ds:si source
  *      \param es:di destination
  *      \param cx maximum limit

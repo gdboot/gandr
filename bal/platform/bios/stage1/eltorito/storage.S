@@ -156,7 +156,7 @@ int13_ext_read:
  *      \param ecx number of blocks to read
  *      \param edi destination
  *      \param ebx lba to read from
- *      \return BIOS error code, if any, in eax.
+ *      \return BIOS error code, if any, in al.
  */
 storage_read:
     xor %eax, %eax
@@ -217,6 +217,7 @@ storage_read:
  *      \return di points to the directory record.
                 eax ~0 on record not found, other non-zero values for disk
                 failure.
+                Aborts boot if ISO uses XAR/multiple directory records.
  */
 find_directory_record:
     xor %eax, %eax
@@ -224,6 +225,11 @@ find_directory_record:
 
     call strlen
     push %ecx
+
+    test $DIRREC_FLAG_XAR_RECORD, directory_record_file_flags(%di)
+    jnz .xar_error
+    test $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
+    jnz .multiple_records_error
 
     movl directory_record_lba(%di), %ebx
     add directory_record_xar_length(%di), %ebx
@@ -257,6 +263,11 @@ find_directory_record:
                 jb .string_cmp
 
             // Found.
+            test $DIRREC_FLAG_XAR_RECORD, directory_record_file_flags(%di)
+            jnz .xar_error
+            test $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
+            jnz .multiple_records_error
+
             movl 4(%esp), %edi
             jmp .success
 
@@ -295,6 +306,12 @@ find_directory_record:
         popal
         not %eax
         ret
+
+    .xar_error:
+    .multiple_records_error:
+        /* TODO: error handling. */
+        hlt
+        jmp .xar_error
 
 /*! Initialize disk.
  *      \param dl boot drive
@@ -339,16 +356,45 @@ storage_init:
     cmpl $SECTOR_SIZE, (PVD_BUFFER + pvd_logical_block_size)
     jne .block_size_error
 
+    mov $(PVD_BUFFER + pvd_root_directory_entry), %edi
+    mov $boot_dir, %esi
+    call find_directory_record
+
+    test %eax, %eax
+    jz 1f
+
+    cmp $0xFFFFFFFF, %eax
+    je .no_boot_dir_error
+    jmp .read_error
+
+    1:
+    test $DIRREC_FLAG_DIR, directory_record_file_flags(%di)
+    jz .no_boot_dir_error
+
+    movl directory_record_lba(%di), %eax
+    movl %eax, (boot_dir_lba)
+    movl directory_record_data_length(%di), %eax
+    movl %eax, (boot_dir_len)
+
     popal
     ret
 
     .read_error:
     .block_size_error:
+    .no_boot_dir_error:
         /* TODO: ERROR. */
         hlt
         jmp .read_error
 
+boot_dir:   .ascii "boot"
+            .byte 0
+boot_dir_lba:
+            .long 0
+boot_dir_len:
+            .long 0
+
 /*! Opens a file to be read from.
+ *  NOTE: doesn't support sub-directories.
  *      \param esi points to the file name
  *      \return ecx contains size of the file.
  *              If file not found, eax non-zero. Else, aborts boot on error.
