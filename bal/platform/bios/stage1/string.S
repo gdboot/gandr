@@ -38,6 +38,7 @@ toupper:
 .global strlen
 strlen:
     push %si
+    push %ax
 
     xor %ecx, %ecx
     0:
@@ -49,6 +50,7 @@ strlen:
         jmp 0b
 
     .return:
+        pop %ax
         pop %si
         ret
 

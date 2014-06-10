@@ -212,8 +212,9 @@ storage_read:
         jmp .storage_read_ret
 
 /*! Check a directory for a particular record.
- *      \param di Pointer to a (valid) directory record.
- *      \param ds:si Record identifier.
+ *      \param ebx the directory's LBA
+ *      \param edx length of directory data
+ *      \param ds:si record identifier
  *      \return di points to the directory record.
                 eax ~0 on record not found, other non-zero values for disk
                 failure.
@@ -225,15 +226,6 @@ find_directory_record:
 
     call strlen
     push %ecx
-
-    test $DIRREC_FLAG_XAR_RECORD, directory_record_file_flags(%di)
-    jnz .xar_error
-    test $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
-    jnz .multiple_records_error
-
-    movl directory_record_lba(%di), %ebx
-    add directory_record_xar_length(%di), %ebx
-    movl directory_record_data_length(%di), %edx
 
     .load_sector:
         mov $(PVD_BUFFER + SECTOR_SIZE), %edi
@@ -263,9 +255,9 @@ find_directory_record:
                 jb .string_cmp
 
             // Found.
-            test $DIRREC_FLAG_XAR_RECORD, directory_record_file_flags(%di)
+            testb $DIRREC_FLAG_XAR_RECORD, directory_record_file_flags(%di)
             jnz .xar_error
-            test $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
+            testb $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
             jnz .multiple_records_error
 
             movl 4(%esp), %edi
@@ -357,6 +349,16 @@ storage_init:
     jne .block_size_error
 
     mov $(PVD_BUFFER + pvd_root_directory_entry), %edi
+
+    testb $DIRREC_FLAG_XAR_RECORD, directory_record_file_flags(%di)
+    jnz .xar_error
+    testb $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
+    jnz .multiple_records_error
+
+    movl directory_record_lba(%di), %ebx
+    add directory_record_xar_length(%di), %ebx
+    movl directory_record_data_length(%di), %edx
+
     mov $boot_dir, %esi
     call find_directory_record
 
@@ -368,10 +370,11 @@ storage_init:
     jmp .read_error
 
     1:
-    test $DIRREC_FLAG_DIR, directory_record_file_flags(%di)
+    testb $DIRREC_FLAG_DIR, directory_record_file_flags(%di)
     jz .no_boot_dir_error
 
     movl directory_record_lba(%di), %eax
+    add directory_record_xar_length(%di), %eax
     movl %eax, (boot_dir_lba)
     movl directory_record_data_length(%di), %eax
     movl %eax, (boot_dir_len)
@@ -388,39 +391,70 @@ storage_init:
 
 boot_dir:   .ascii "boot"
             .byte 0
-boot_dir_lba:
-            .long 0
-boot_dir_len:
-            .long 0
+boot_dir_lba:   .long 0
+boot_dir_len:   .long 0
+
+file_dir_rec:   .long 0
 
 /*! Opens a file to be read from.
  *  NOTE: doesn't support sub-directories.
  *      \param esi points to the file name
- *      \return ecx contains size of the file.
  *              If file not found, eax non-zero. Else, aborts boot on error.
  */
 .global file_open
 file_open:
     xor %eax, %eax
-    not %eax
-    ret
+    pushal
+
+    movl (boot_dir_lba), %ebx
+    movl (boot_dir_len), %edx
+    call find_directory_record
+
+    test %eax, %eax
+    jz 0f
+
+    cmp $0xFFFFFFFF, %eax
+    je .file_not_found
+    jmp .file_read_error
+
+    0:
+    testb $DIRREC_FLAG_DIR, directory_record_file_flags(%di)
+    jnz .file_not_found
+    movl %edi, (file_dir_rec)
+
+    .ret:
+        popal
+        ret
+
+    .file_read_error:
+        /* TODO: ERROR. */
+        hlt
+        jmp .file_read_error
+
+    .file_not_found:
+        popal
+        not %eax
+        ret
 
 /*! Reads the currently open file.
  *      \param edi where to read the file to
- *      \param ecx the number of bytes to read
  *      \return Aborts boot on error.
  */
 .global file_read
 file_read:
-    xor %eax, %eax
-    not %eax
-    ret
+    pushal
 
-/*! Close the currently open file.
- *      \return Aborts boot on error.
- */
-.global file_close  
-file_close:
-    xor %eax, %eax
-    not %eax
+    movl %ebp, (file_dir_rec)
+    
+    // Get the number of blocks to read.
+    movl %ecx, directory_record_data_length(%bp)
+    add $0x7FF, %ecx
+    shl $11, %ecx
+
+    movl %ebx, directory_record_lba(%bp)
+    add %ebx, directory_record_xar_length(%bp)
+    call storage_read
+    jnz .file_read_error
+
+    popal
     ret

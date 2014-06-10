@@ -276,10 +276,12 @@ storage_init:
         hlt
         jmp .error_no_pxe
 
+/* Open file's size. */
+file_size:  .long 0
+
 /*! Opens a file to be read from.
  *      \param esi points to the file name
- *      \return size of file in ecx.
- *              If file not found, eax non-zero. Else, aborts boot on error.
+ *      \return If file not found, eax non-zero. Else, aborts boot on error.
  */
 .global file_open
 file_open:
@@ -326,7 +328,7 @@ file_open:
     jnz .open_fsize_error
 
     mov (pxe_tftp_open + tftp_open_port), %ecx
-    mov %ecx, 26(%esp) /* store ECX on stack. */
+    mov %ecx, (file_size)
 
     movw $UDP_PORT, (pxe_tftp_open + tftp_open_port)
     movw $PACKET_SIZE, (pxe_tftp_open + tftp_open_packet_size)
@@ -361,13 +363,13 @@ file_open:
 
 /*! Reads the currently open file.
  *      \param edi where to read the file to
- *      \param ecx the number of bytes to read
  *      \return Aborts boot on error.
  */
 .global file_read
 file_read:
     pushal
 
+    movl (file_size), %ecx
     .read:
         mov %edi, %edx
         mov %edi, %ebx

@@ -164,10 +164,15 @@ reset_cs:
         test %eax, %eax
         jne .error_no_bal
 
-    // Read BAL, size in ECX.
+    // Read BAL.
     .read_bal:
         mov $BAL_LOAD_ADDRESS, %edi
         call file_read
+
+#ifdef BD_PXE
+    /* Only PXE requires closing of file (via TFTP). */
+    call file_close
+#endif
 
 //    jmp Lgo_stage2
 
