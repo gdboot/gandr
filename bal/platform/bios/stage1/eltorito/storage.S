@@ -231,6 +231,7 @@ find_directory_record:
         mov $(PVD_BUFFER + SECTOR_SIZE), %edi
         mov $1, %ecx
         call storage_read
+
         test %eax, %eax
         jnz .disk_error
 
@@ -260,17 +261,17 @@ find_directory_record:
             testb $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
             jnz .multiple_records_error
 
-            movl 4(%esp), %edi
+            movl %edi, 4(%esp)
             jmp .success
 
         .next_record:
             movzbl (%di), %ecx
             add %cx, %di
 
-            cmp $(PVD_BUFFER + SECTOR_SIZE), %di
+            cmp $(PVD_BUFFER + (SECTOR_SIZE * 2)), %di
             jae .next_sector
 
-            lea PVD_BUFFER(%edx), %ecx
+            lea (SECTOR_SIZE + PVD_BUFFER)(%edx), %ecx
             cmp %cx, %di
             jae .not_found
 
@@ -286,7 +287,7 @@ find_directory_record:
         jmp .load_sector
 
     .disk_error:
-        movl 32(%esp), %eax
+        movl %eax, 32(%esp)
 
     .success:
         add $4, %esp
@@ -345,7 +346,7 @@ storage_init:
     test %eax, %eax
     jnz .read_error
 
-    cmpl $SECTOR_SIZE, (PVD_BUFFER + pvd_logical_block_size)
+    cmpw $SECTOR_SIZE, (PVD_BUFFER + pvd_logical_block_size)
     jne .block_size_error
 
     mov $(PVD_BUFFER + pvd_root_directory_entry), %edi
@@ -355,8 +356,8 @@ storage_init:
     testb $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
     jnz .multiple_records_error
 
-    movl directory_record_lba(%di), %ebx
-    add directory_record_xar_length(%di), %ebx
+    movzbl directory_record_xar_length(%di), %ebx
+    add directory_record_lba(%di), %ebx
     movl directory_record_data_length(%di), %edx
 
     mov $boot_dir, %esi
@@ -373,8 +374,8 @@ storage_init:
     testb $DIRREC_FLAG_DIR, directory_record_file_flags(%di)
     jz .no_boot_dir_error
 
-    movl directory_record_lba(%di), %eax
-    add directory_record_xar_length(%di), %eax
+    movzbl directory_record_xar_length(%di), %eax
+    add directory_record_lba(%di), %eax
     movl %eax, (boot_dir_lba)
     movl directory_record_data_length(%di), %eax
     movl %eax, (boot_dir_len)
@@ -408,6 +409,7 @@ file_open:
 
     movl (boot_dir_lba), %ebx
     movl (boot_dir_len), %edx
+
     call find_directory_record
 
     test %eax, %eax
@@ -444,16 +446,18 @@ file_open:
 file_read:
     pushal
 
-    movl %ebp, (file_dir_rec)
+    movl (file_dir_rec), %ebp
     
     // Get the number of blocks to read.
-    movl %ecx, directory_record_data_length(%bp)
+    movl directory_record_data_length(%bp), %ecx
     add $0x7FF, %ecx
-    shl $11, %ecx
+    shr $11, %ecx
 
-    movl %ebx, directory_record_lba(%bp)
-    add %ebx, directory_record_xar_length(%bp)
+    movzbl directory_record_xar_length(%bp), %ebx
+    add directory_record_lba(%bp), %ebx
     call storage_read
+
+    test %eax, %eax
     jnz .file_read_error
 
     popal

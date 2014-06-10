@@ -159,6 +159,7 @@ reset_cs:
         movb $0, bal_is_64bit
         movw $0x3233 /* 32 */, bal + 7
         mov $bal, %esi
+
         call file_open
 
         test %eax, %eax
@@ -184,8 +185,13 @@ reset_cs:
         hlt
         jmp .hlt
 
+#ifndef BD_ELTORITO
 bal: .ascii "gd_bal.  "
      .byte 0
+#else
+bal: .ascii "gd_bal.  ;1"
+     .byte 0
+#endif
 
 .text
 Lgo_stage2:
