@@ -16,7 +16,9 @@
 .code16
 .section base
 
-//! Initiates output, disables the hardware cursor.
+active_page:    .byte 0
+
+//! Initiates output.
 .global output_init
 output_init:
     pushal
@@ -25,16 +27,21 @@ output_init:
     // Set mode (ah = 0x00) to 80*25 text mode (al = 0x03).
     mov $0x0003, %ax
     int $0x10
-   
+
     // Point es to video memory.
     mov $0xB800, %ax
     mov %ax, %es
 
+    // Get active page.
+    xor %bx, %bx
+    mov $0x0F, %ah
+    int $0x10
+    mov %bh, (active_page)
+
     // Set the cursor to 00,00.
     // ah = 0x02, int 0x10, to set cursor position.
-    // BH = 0x00, page number.
+    // bh = page number.
     // dh = row; dl = column.
-    xor %bx, %bx
     xor %dx, %dx
     mov $0x02, %ah
     int $0x10
@@ -65,20 +72,30 @@ output_string:
     push %si
     push %ax
 
-    // Some BIOS's may destroy BP if display is getting scrolled.
+    // Some BIOS may destroy BP if display is getting scrolled.
     push %bp
 
     .loop:
         // Load the value at [es:si] in al.
         lodsb
 
-        // Stop if it's the null terminator.
+        // Stop if it is the null terminator.
         test %al, %al
         jz .done
 
-        // Output character; ah = 0x0E; al = character; bh = page number = 0x00;
+        cmp $0x0A, %al      // New line?
+        jne 0f
+
         mov $0x0E, %ah
-        xor %bh, %bh
+        mov (active_page), %bh
+        int $0x10
+
+        // Output carriage return.
+        mov $0x0D, %al
+    0:
+        // Output character; ah = 0x0E; al = character; bh = page number;
+        mov $0x0E, %ah
+        mov (active_page), %bh
         int $0x10
         jmp .loop
 
