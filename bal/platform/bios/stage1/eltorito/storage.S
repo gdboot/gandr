@@ -397,6 +397,8 @@ boot_dir_len:   .long 0
 
 file_dir_rec:   .long 0
 
+.text
+
 /*! Opens a file to be read from.
  *  NOTE: doesn't support sub-directories.
  *      \param esi points to the file name

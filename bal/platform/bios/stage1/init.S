@@ -178,7 +178,6 @@ reset_cs:
 //    jmp Lgo_stage2
 
     .error_not_386:
-    .error_open_bal:
     .error_no_bal:
     .hlt:
         /* TODO: ERROR. */
