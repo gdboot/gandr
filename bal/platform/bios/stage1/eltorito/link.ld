@@ -6,11 +6,6 @@ SECTIONS
     {
         *(base.start)
         *(base)
-
-        . = 2048 - 2;
-        BYTE(0x55);
-        BYTE(0xAA);
-
         *(.text*)
         *(.rodata*)
     }
