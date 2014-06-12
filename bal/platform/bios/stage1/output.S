@@ -21,7 +21,7 @@ active_page:    .byte 0
 //! Initiates output.
 .global output_init
 output_init:
-    pushal
+    pusha
     push %es
 
     // Set mode (ah = 0x00) to 80*25 text mode (al = 0x03).
@@ -56,12 +56,12 @@ output_init:
 
     // Clear screen to black background, white foreground, spaces.
     xor %di, %di
-    mov $1000, %ecx
-    mov $0x0F200F20, %eax
-    rep stosl
+    mov $2000, %cx
+    mov $0x0F20, %ax
+    rep stosw
 
     pop %es
-    popal
+    popa
     ret
 
 /*! Outputs a null terminated string.

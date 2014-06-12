@@ -11,19 +11,19 @@ SECTIONS
         BYTE(0x55);
         BYTE(0xAA);
 
-        *(.text)
-        *(.rodata)
+        *(.text*)
+        *(.rodata*)
     }
  
     .data :
     {
         *(.data)
+        data_end = .;
     }
 
     .bss :
     {
         *(.bss*)
+        *(COMMON)
     }
-
-    end = .;
 }

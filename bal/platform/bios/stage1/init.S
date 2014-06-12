@@ -55,15 +55,16 @@ eltorito_info:
     mov $0x7C00, %si
     
 #ifdef BD_PXE
-    mov $(0x2000 - 0x0600), %ecx
+    mov $(data_end - 0x0600 + 0x03), %cx
+    shr $1, %cx
 #elif defined(BD_ELTORITO)
-    mov $2048, %ecx
+    mov $1024, %cx
 #else
-    mov $512, %ecx
+    #error Unsupported boot device.
 #endif
 
     cld
-    rep movsb
+    rep movsw
 
 #ifdef BD_PXE
     pop %es
