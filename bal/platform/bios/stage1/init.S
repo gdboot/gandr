@@ -145,14 +145,14 @@ reset_cs:
     mov %eax, %ecx
 
     // CPUID only supportable if bit 21 is modifiable.
-    xor $0x20, %ah
+    xor $0x200000, %eax
     push %eax
     popfl
 
     pushfl
     pop %eax
     xor %ecx, %eax
-    and $0x20, %ah
+    and $0x200000, %eax
     jz .no_cpuid
 
     // CPUID is supported, figure out if 64-bit is supported.
