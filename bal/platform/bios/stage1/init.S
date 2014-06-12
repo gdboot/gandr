@@ -56,7 +56,7 @@ eltorito_info:
     
 #ifdef BD_PXE
     mov $(data_end - 0x0600 + 0x01), %cx
-    shr $1, %cx     /* Weird GAS bug. */
+    shr $1, %cx     /* Division in expressions doesn't seem to work in GAS. */
 #elif defined(BD_ELTORITO)
     mov $1024, %cx
 #else
@@ -88,7 +88,7 @@ reset_cs:
 
     mov $(bss_end + 1), %cx
     sub $(bss_start), %cx
-    shr $1, %cx     /* Weird GAS bug. */
+    shr $1, %cx     /* Division in expressions doesn't seem to work in GAS. */
     rep stosw
 
     // Invert the IOPL bits, since on 8086/80186 they are hardwired to 1.
