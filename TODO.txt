@@ -1,6 +1,4 @@
 === TODO ===
 
-    * Add error handling in Stage 1. (Shikhin)
-    * Add ISO9660 support. (Shikhin)
-    * Add CPUID check. (Shikhin)
-    * Add stage2 read code, and final switch code. (Shikhin, oshepherd)
+    * Add error handling in Stage 1. (shikhin)
+    * Jump to BAL. (shikhin)
