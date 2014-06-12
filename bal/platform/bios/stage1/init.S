@@ -91,10 +91,15 @@ reset_cs:
     shr $1, %cx     /* Division in expressions doesn't seem to work in GAS. */
     rep stosw
 
-    // Invert the IOPL bits, since on 8086/80186 they are hardwired to 1.
-    // In real mode on the 286, they are always 0, though.
     pushf
     pop %ax
+
+    // Only set on 8086 and 80186.
+    test $0x80, %ah
+    jnz .error_no_bal
+
+    // Invert the IOPL bits, since on 8086/80186/80286 they are hardwired to 1.
+    // In real mode on the 286, they are always 0, though.
     xor $0x30, %ah
 
     push %ax
@@ -104,7 +109,7 @@ reset_cs:
 
     // Test if bits changed, or not.
     xor %cx, %ax
-    test %ah, %ah
+    test $0x30, %ah
     jnz .error_not_386
 
     call output_init
