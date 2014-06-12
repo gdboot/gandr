@@ -55,8 +55,8 @@ eltorito_info:
     mov $0x7C00, %si
     
 #ifdef BD_PXE
-    mov $(data_end - 0x0600 + 0x03), %cx
-    shr $1, %cx
+    mov $(data_end - 0x0600 + 0x01), %cx
+    shr $1, %cx     /* Weird GAS bug. */
 #elif defined(BD_ELTORITO)
     mov $1024, %cx
 #else
