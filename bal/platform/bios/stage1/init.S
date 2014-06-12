@@ -110,6 +110,15 @@ reset_cs:
     call output_init
     call storage_init
 
+    jmp 0f
+
+    .error_not_386:
+        hlt
+        jmp .error_not_386
+
+// Loaded complete stage1.
+.text
+0:
 #ifdef BD_PXE
     xor %ax, %ax
     mov %ax, %ss
@@ -187,22 +196,12 @@ reset_cs:
 
 //    jmp Lgo_stage2
 
-    .error_not_386:
     .error_no_bal:
     .hlt:
         /* TODO: ERROR. */
         hlt
         jmp .hlt
 
-#ifndef BD_ELTORITO
-bal: .ascii "gd_bal.  "
-     .byte 0
-#else
-bal: .ascii "gd_bal.  ;1"
-     .byte 0
-#endif
-
-.text
 Lgo_stage2:
     // Find highest point in conventional memory - that will be our new stack
     int $0x12
@@ -237,3 +236,12 @@ Lnot_64bit:
 
     .comm stage2_entry, 6
     .comm bal_is_64bit, 1
+
+.data
+#ifndef BD_ELTORITO
+bal: .ascii "gd_bal.  "
+     .byte 0
+#else
+bal: .ascii "gd_bal.  ;1"
+     .byte 0
+#endif

@@ -79,8 +79,7 @@ directory_record_file_identifier:
 #define DIRREC_FLAG_XAR_RECORD          (1 << 3)
 #define DIRREC_FLAG_MULTIPLE_RECORDS    (1 << 7)
 
-.section base
-
+.bss
 boot_drive: .byte 0
 lba_packet:
     .byte 0
@@ -90,6 +89,8 @@ lba_packet:
     .word 0
     .long 0
     .long 0
+
+.section base
 
 .equ SECTOR_SIZE, 2048
 .equ PVD_BUFFER, 0x2000
@@ -392,6 +393,8 @@ storage_init:
 
 boot_dir:   .ascii "boot"
             .byte 0
+
+.bss
 boot_dir_lba:   .long 0
 boot_dir_len:   .long 0
 

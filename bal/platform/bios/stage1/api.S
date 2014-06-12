@@ -12,6 +12,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR 
  * PERFORMANCE OF THIS SOFTWARE.
  */
+
 #include <bal/bios_services.h>
 
 .code16
@@ -22,6 +23,7 @@
 stack_top    = 0x8000
 scratch_base = 0x8000
 
+.data
 api_table:
     .ascii "BIOS"
     .long api_table_end - api_table
@@ -31,6 +33,7 @@ api_table:
     .word api_int_call, PM_CS16
 api_table_end:
 
+.text
 api_far_call:
     // Set registers as passed
     call pm16_to_rm

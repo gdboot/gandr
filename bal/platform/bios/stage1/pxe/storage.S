@@ -14,18 +14,8 @@
  */
 
 .code16
-.data
-
-// The PXE API pointer.
-.align 4
-pxe_api_addr:
-    .offset:    .word 0
-    .segment:   .word 0
 
 #define PXE_NEW_PRESENT (1 << 0)
-
-pxe_flags:
-    .byte 0
 
 #define UNDI_SHUTDOWN   0x05
 #define UNLOAD_STACK    0x70
@@ -61,19 +51,6 @@ cached_info_sip:
     .struct cached_info_sip + 4
 cached_info_gip:
 
-.data
-pxe_cached_info:
-    .word 0
-    .word 2
-    .word 0
-    .word 0  // Zero implies PXE uses own buffer.
-    .word 0
-    .word 0
-
-    // SIP & GIP part of actual PXENV_GET_CACHED_INFO structure.
-    .long 0
-    .long 0
-
 //! The PXENV_TFTP_OPEN structure.
     .struct 0
 tftp_open_status:
@@ -88,15 +65,6 @@ tftp_open_port:
     .struct tftp_open_port + 2
 tftp_open_packet_size:
 
-.data
-pxe_tftp_open:
-    .word 0
-    .long 0
-    .long 0
-    .skip 128, 0
-    .word 0
-    .word 0
-
 //! The PXENV_TFTP_READ structure.
     .struct 0
 tftp_read_status:
@@ -110,12 +78,45 @@ tftp_read_buffer_off:
 tftp_read_buffer_seg:
 
 .data
+pxe_cached_info:
+    .word 0
+    .word 2
+    .word 0
+    .word 0  // Zero implies PXE uses own buffer.
+    .word 0
+    .word 0
+
+    // SIP & GIP part of actual PXENV_GET_CACHED_INFO structure.
+    .long 0
+    .long 0
+
+.bss
+// The PXE API pointer.
+.align 4
+pxe_api_addr:
+    .offset:    .word 0
+    .segment:   .word 0
+
+pxe_flags:
+    .byte 0
+
+pxe_tftp_open:
+    .word 0
+    .long 0
+    .long 0
+    .skip 128, 0
+    .word 0
+    .word 0
+
 pxe_tftp_read:
     .word 0
     .word 0
     .word 0
     .word 0
     .word 0
+
+/* Open file's size. */
+file_size:  .long 0
 
 .text
 
@@ -275,9 +276,6 @@ storage_init:
         /* TODO: ERROR HANDLING. */
         hlt
         jmp .error_no_pxe
-
-/* Open file's size. */
-file_size:  .long 0
 
 /*! Opens a file to be read from.
  *      \param esi points to the file name
