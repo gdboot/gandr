@@ -82,6 +82,15 @@ reset_cs:
     mov $BOOT_STACK, %sp
 #endif
 
+    // Clear the BSS.
+    mov $bss_start, %di
+    xor %ax, %ax
+
+    mov $(bss_end + 1), %cx
+    sub $(bss_start), %cx
+    shr $1, %cx     /* Weird GAS bug. */
+    rep stosw
+
     // Invert the IOPL bits, since on 8086/80186 they are hardwired to 1.
     // In real mode on the 286, they are always 0, though.
     pushf
