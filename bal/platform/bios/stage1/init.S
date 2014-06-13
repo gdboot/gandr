@@ -91,6 +91,8 @@ reset_cs:
     shr $1, %cx     /* Division in expressions doesn't seem to work in GAS. */
     rep stosw
 
+    call output_init
+
     pushf
     pop %ax
 
@@ -112,7 +114,8 @@ reset_cs:
     test $0x30, %ah
     jnz .error_not_386
 
-    call output_init
+    /* Clear upper half of ESP. */
+    movzwl %sp, %esp
     call storage_init
 
     jmp 0f
@@ -124,16 +127,13 @@ reset_cs:
 // Loaded complete stage1.
 .text
 0:
-#ifdef BD_PXE
     xor %ax, %ax
+#ifdef BD_PXE
+    mov %ax, %es
     mov %ax, %ss
-    mov $BOOT_STACK, %esp
-#else
-    // Clear higher word of ESP.
     mov $BOOT_STACK, %esp
 #endif
 
-    mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
 
