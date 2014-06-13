@@ -120,6 +120,43 @@ file_size:  .long 0
 
 .text
 
+/*! Copies n characters, unless source string terminates.
+ *  NOTE: doesn't handle segment overflow on destination.
+ *      \param ds:si source
+ *      \param es:di destination
+ *      \param cx maximum limit
+ *      \return Incremented ds:si, es:di.
+ */
+strncpy:
+    push %ax
+    push %cx
+    push %bx
+
+    .loop:
+        lodsb
+        stosb
+
+        test %si, %si
+        jnz 0f
+
+        // Segment overflow.
+        mov %ds, %bx
+        add $0x1000, %bx
+        mov %bx, %ds
+
+    0:
+        test %al, %al
+        jz .ret
+
+        loop .loop
+
+    .ret:
+        pop %bx
+        pop %cx
+        pop %ax
+
+        ret
+
 /*! Call the PXE API (both before 2.1 and after).
  *      \param ds:di the address of the input buffer
  *      \param bx the "opcode"

@@ -90,10 +90,46 @@ lba_packet:
     .long 0
     .long 0
 
-.section base
-
 .equ SECTOR_SIZE, 2048
 .equ PVD_BUFFER, 0x2000
+
+.section base
+
+/*! Converts character to uppercase.
+ *      \param al character.
+ *      \return al contains the uppercase character.
+ */
+toupper:
+     cmp $'a', %al
+     jb .converted
+     cmp $'z', %al
+     ja .converted
+
+     add $('A' - 'a'), %al
+     .converted:
+        ret
+
+/*! Gets the length of the string.
+ *      \param ds:si source
+ *      \return Length of string in ecx.
+ */
+strlen:
+    push %si
+    push %ax
+
+    xor %ecx, %ecx
+    0:
+        lodsb
+        test %al, %al
+        jz .return
+
+        inc %ecx
+        jmp 0b
+
+    .return:
+        pop %ax
+        pop %si
+        ret
 
 /*! Checks if int 0x13 extensions are supported or not.
  *      \return Aborts boot on error.
