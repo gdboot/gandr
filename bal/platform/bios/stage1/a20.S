@@ -45,9 +45,14 @@ a20_enable:
     mov $0x2401, %ax
     int $0x15
 
+    jc 0f
+    test %ah, %ah
+    jnz 0f
+
     call a20_check
     jc .return
 
+    0:
     // Try the keyboard controller.
     cli
     call kyb_wait_input_buf
@@ -79,6 +84,20 @@ a20_enable:
 
     call a20_check
     jc .return
+
+    /* Fast A20 is known to hang the machine, so use "Query A20 Gate Support"
+     * to figure out whether it is supported or not.
+     */
+    mov $0x2403, %ax
+    int $0x15
+
+    jc .error
+    test %ah, %ah
+    jnz .error
+
+    /* Bit 1 indicates whether I/O port 0x92 is supported or not. */
+    test $2, %bx
+    jz .error
 
     // Try fast A20.
     in $0x92, %al           // Get the value from 0x92 port. 
