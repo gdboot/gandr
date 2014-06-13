@@ -111,19 +111,19 @@ toupper:
 
 /*! Gets the length of the string.
  *      \param ds:si source
- *      \return Length of string in ecx.
+ *      \return Length of string in cx.
  */
 strlen:
     push %si
     push %ax
 
-    xor %ecx, %ecx
+    xor %cx, %cx
     0:
         lodsb
         test %al, %al
         jz .return
 
-        inc %ecx
+        inc %cx
         jmp 0b
 
     .return:
@@ -262,7 +262,7 @@ find_directory_record:
     pushal
 
     call strlen
-    push %ecx
+    push %cx
 
     .load_sector:
         mov $(PVD_BUFFER + SECTOR_SIZE), %edi
@@ -277,7 +277,7 @@ find_directory_record:
             cmpb $0, directory_record_length(%di)
             je .next_sector
 
-            movl (%esp), %ecx
+            mov (%esp), %cx
             cmpb directory_record_file_identifier_len(%di), %cl
             jne .next_record
 
@@ -298,7 +298,7 @@ find_directory_record:
             testb $DIRREC_FLAG_MULTIPLE_RECORDS, directory_record_file_flags(%di)
             jnz .multiple_records_error
 
-            movl %edi, 4(%esp)
+            movl %edi, 2(%esp)
             jmp .success
 
         .next_record:
@@ -324,15 +324,15 @@ find_directory_record:
         jmp .load_sector
 
     .disk_error:
-        movl %eax, 32(%esp)
+        movl %eax, 30(%esp)
 
     .success:
-        add $4, %esp
+        add $2, %esp
         popal
         ret
 
     .not_found:
-        add $4, %esp
+        add $2, %esp
         popal
         not %eax
         ret
