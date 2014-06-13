@@ -35,7 +35,8 @@ kyb_wait_output_buf:
  */
 .global a20_enable
 a20_enable:
-    pushal
+    push %ax
+    pushf
 
     call a20_check
     jc .return
@@ -75,7 +76,6 @@ a20_enable:
     out %al, $0x64          // Enable.
 
     call kyb_wait_input_buf
-    sti
 
     call a20_check
     jc .return
@@ -93,7 +93,8 @@ a20_enable:
     jnc .error
 
     .return:
-        popal
+        popf
+        pop %ax
         ret
 
     .error:
