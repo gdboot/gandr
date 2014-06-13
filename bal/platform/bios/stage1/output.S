@@ -117,35 +117,15 @@ hexadecimal_buffer:
  */
 .global output_hexadecimal
 output_hexadecimal:
-    pushal
+    push %di
+    push %si
 
-    mov $8, %ecx
-    // +2 for the 0x part; + 7 to reach last byte.
-    mov $hexadecimal_buffer + 2 + 7, %di
-    movl $0x30303030, -3(%di)
-    movl $0x30303030, -7(%di)
+    // +2 for the 0x part.
+    mov $hexadecimal_buffer + 2, %di
+    mov $hexadecimal_buffer, %si
+    call itoa
+    call output_string
 
-    .loop_digits:
-        // Get the lower 4 bits.
-        mov %al, %bl
-        and $0x0F, %bl
-
-        // If it is greater than 9, then add 7 to get 'A' (0x41).
-        cmp $9, %bl
-        jbe .numeric
-
-        add $7, %bl
-
-    .numeric:
-        add %bl, (%di)
-
-        // Next value.
-        ror $4, %eax
-        dec %di
-        loop .loop_digits
-
-        mov $hexadecimal_buffer, %si
-        call output_string
-
-    popal
+    pop %si
+    pop %di
     ret
