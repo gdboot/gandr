@@ -117,9 +117,12 @@ a20_enable:
         ret
 
     .error:
-        /* TODO: ERROR. */
-        hlt
-        jmp .error
+        mov $a20_error_msg, %si
+        jmp abort_boot
+
+a20_error_msg:
+    .ascii "Cannot enable the A20 gate."
+    .byte 0
 
 /*! Checks the status of the A20 line.
  *      \return Carry set if the A20 line is enabled.

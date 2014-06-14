@@ -121,8 +121,16 @@ reset_cs:
     jmp 0f
 
     .error_not_386:
-        hlt
-        jmp .error_not_386
+#ifdef BD_PXE
+        xor %ax, %ax
+        mov %ax, %es
+#endif
+        mov $not_386_error_msg, %si
+        jmp abort_boot
+
+not_386_error_msg:
+    .ascii "The CPU is not Intel 80386 compatible."
+    .byte 0
 
 // Loaded complete stage1.
 .text
@@ -201,12 +209,20 @@ reset_cs:
 
 //    jmp Lgo_stage2
 
-    .error_no_bal:
     .hlt:
-        /* TODO: ERROR. */
         hlt
         jmp .hlt
 
+    .error_no_bal:
+        mov $no_bal_error_msg, %si
+        jmp abort_boot
+
+.data
+no_bal_error_msg:
+    .ascii "No Boot Abstraction Layer found on the boot device."
+    .byte 0
+
+.text
 Lgo_stage2:
     // Find highest point in conventional memory - that will be our new stack
     int $0x12

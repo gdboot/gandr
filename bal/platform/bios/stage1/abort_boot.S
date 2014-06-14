@@ -16,13 +16,23 @@
 .code16
 .section base
 
+stage1_error_msg: .ascii "Gandr stage1 fatal error. "
+                  .byte 0
+
 /*! Abort boot.
  *  Plays note A, 5th octave, 880Hz. Credits to contrapunctus
  *  from #music at freenode.
+ *      \param %si points to error string.
  */
 .global abort_boot
 abort_boot:
     cli
+
+    push %si
+    mov $stage1_error_msg, %si
+    call output_string
+    pop %si
+    call output_string
 
     /* Write to command register (0x43).
      *   10XXXXXXb - channel 2.
