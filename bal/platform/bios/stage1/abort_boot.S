@@ -16,6 +16,7 @@
 .code16
 .section base
 
+.global stage1_error_msg
 stage1_error_msg: .ascii "Gandr stage1 fatal error. "
                   .byte 0
 
@@ -26,13 +27,15 @@ stage1_error_msg: .ascii "Gandr stage1 fatal error. "
  */
 .global abort_boot
 abort_boot:
-    cli
-
     push %si
     mov $stage1_error_msg, %si
     call output_string
     pop %si
     call output_string
+
+.global abort_boot_hcf
+abort_boot_hcf:
+    cli
 
     /* Write to command register (0x43).
      *   10XXXXXXb - channel 2.

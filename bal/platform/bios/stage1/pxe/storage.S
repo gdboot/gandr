@@ -184,6 +184,57 @@ pxe_api:
     pop %ecx
     ret
 
+/*! Print out PXE error message.
+ *      \param ebx opcode
+ *      \param si file name (null if no file)
+ *      \param ax return status code
+ */
+pxe_error:
+    push %si
+    mov $stage1_error_msg, %si
+    call output_string
+    pop %si
+
+    test %si, %si
+    jz 0f
+
+    push %si
+    mov $pxe_file_error_msg_1, %si
+    call output_string
+    pop %si
+    call output_string
+    mov $pxe_file_error_msg_2, %si
+    call output_string
+
+0:
+    movzwl %ax, %eax
+    mov $.pxe_error_status, %di
+    call itoa
+    mov %ebx, %eax
+    mov $.pxe_error_opcode, %di
+    call itoa
+
+    mov $pxe_error_msg, %si
+    call output_string
+
+    jmp abort_boot_hcf
+
+.data
+pxe_file_error_msg_1:
+    .ascii "File "
+    .byte 0
+pxe_file_error_msg_2:
+    .ascii ": "
+    .byte 0
+
+pxe_error_msg:
+    .ascii "PXE function 0x"
+    .pxe_error_opcode: .ascii "00000000"
+    .ascii " returned status 0x"
+    .pxe_error_status: .ascii "00000000"
+    .ascii "."
+
+.text
 /*! Initialize PXE.
  *      \param es:bx the PXENV+ structure
  *      \param ss:sp + 4 the !PXE structure (if valid)
@@ -278,7 +329,11 @@ storage_init:
 
         call pxe_api
 
-        or (pxe_cached_info), %ax
+        test %ax, %ax
+        jnz .error_get_cached_info
+
+        mov (pxe_cached_info), %ax
+        test %ax, %ax
         jnz .error_get_cached_info
 
         // Store the SIP & GIP over.
@@ -309,11 +364,24 @@ storage_init:
         jmp .pxenv
 
     .error_get_cached_info:
-    .error_no_pxe:
-        /* TODO: ERROR HANDLING. */
-        hlt
-        jmp .error_no_pxe
+        xor %ax, %ax
+        xor %si, %si
+        mov %ax, %es
+        mov $GET_CACHED_INFO, %ebx
+        jmp pxe_error
 
+    .error_no_pxe:
+        xor %ax, %ax
+        mov %ax, %es
+        mov $no_pxe_error_msg, %si
+        jmp abort_boot
+
+.data
+no_pxe_error_msg:
+    .ascii "Boot mechanism does not appear to be PXE compliant."
+    .byte 0
+
+.text
 /*! Opens a file to be read from.
  *      \param esi points to the file name
  *      \return If file not found, eax non-zero. Else, aborts boot on error.
@@ -359,7 +427,11 @@ file_open:
     mov $TFTP_GET_FSIZE, %bx
     call pxe_api
 
-    orw (pxe_tftp_open), %ax
+    test %ax, %ax
+    jnz .open_fsize_error
+
+    mov (pxe_tftp_open), %ax
+    test %ax, %ax
     jnz .open_fsize_error
 
     mov (pxe_tftp_open + tftp_open_port), %ecx
@@ -372,7 +444,11 @@ file_open:
     mov $TFTP_OPEN, %bx
     call pxe_api
 
-    orw (pxe_tftp_open), %ax
+    test %ax, %ax
+    jnz .open_fopen_error
+
+    mov (pxe_tftp_open), %ax
+    test %ax, %ax
     jnz .open_fopen_error
 
     .open_ret:
@@ -380,21 +456,28 @@ file_open:
         popal
         ret
 
-    .open_fsize_error:
-    .open_fopen_error:
-        cmpw $PXENV_STATUS_TFTP_FILE_NOT_FOUND, (pxe_tftp_open)
-        jne .abort
-
+    .file_not_found:
         // Error out.
         pop %ds
         popal
         not %eax
         ret
 
-    .abort:
-        /* TODO: Error handling. */
-        hlt        
-        jmp .abort
+    .open_fsize_error:
+        cmpw $PXENV_STATUS_TFTP_FILE_NOT_FOUND, (pxe_tftp_open)
+        je .file_not_found
+
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_GET_FSIZE, %ebx
+        jmp pxe_error
+
+    .open_fopen_error:
+        cmpw $PXENV_STATUS_TFTP_FILE_NOT_FOUND, (pxe_tftp_open)
+        je .file_not_found
+
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_OPEN, %ebx
+        jmp pxe_error
 
 /*! Reads the currently open file.
  *      \param edi where to read the file to
@@ -427,7 +510,11 @@ file_read:
         pop %di
 
     .read_loop:
-        or (pxe_tftp_read), %ax
+        test %ax, %ax
+        jnz .read_error
+
+        mov (pxe_tftp_read), %ax
+        test %ax, %ax
         jnz .read_error
 
         movzwl (pxe_tftp_read + tftp_read_buffer_size), %edx
@@ -446,9 +533,9 @@ file_read:
         ret
 
     .read_error:
-        /* TODO: Error handling. */
-        hlt
-        jmp .read_error
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_READ, %ebx
+        jmp pxe_error
 
 /*! Close the currently open file.
  *      \return Aborts boot on error.
@@ -463,7 +550,11 @@ file_close:
     mov $TFTP_CLOSE, %bx
     call pxe_api
 
-    orw (pxe_tftp_open), %ax
+    test %ax, %ax
+    jnz .close_error
+
+    mov (pxe_tftp_open), %ax
+    test %ax, %ax
     jnz .close_error
 
     .close_ret:
@@ -471,6 +562,6 @@ file_close:
         ret
 
     .close_error:
-        /* TODO: Error handling. */
-        hlt
-        jmp .close_error
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_CLOSE, %ebx
+        jmp pxe_error
