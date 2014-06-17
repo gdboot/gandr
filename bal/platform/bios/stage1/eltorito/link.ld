@@ -1,25 +1,35 @@
 ENTRY(_start)
- 
+
+MEMORY
+{
+    BOOT_SECTOR : ORIGIN = 0x0600, LENGTH = 0x800
+    STAGE1      : ORIGIN = 0x0600, LENGTH = 0x1A00
+}
+
 SECTIONS
 {
-    .text 0x0600 :
+    .base 0x0600 :
     {
         *(base.start)
         *(base)
+    } >BOOT_SECTOR
+
+    .text :
+    {
         *(.text*)
         *(.rodata*)
-    }
+    } >STAGE1
  
     .data :
     {
         *(.data)
-    }
+    } >STAGE1
 
     .bss :
     {
-        bss_start = .;
+        bss_start = ABSOLUTE(.);
         *(.bss*)
         *(COMMON)
-        bss_end = .;
-    }
+        bss_end = ABSOLUTE(.);
+    } >STAGE1
 }
