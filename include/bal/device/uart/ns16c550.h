@@ -1,9 +1,12 @@
 #ifndef NS16C550_H
 #define NS16C550_H
 #include <stdint.h>
+#include <gd_bal.h>
 #include <bal/gio.h>
 
 typedef struct {
+	gd_ioctl_fn_t	ioctl;
+
     //! Base address
     gio_addr base;
     //! FIFO size
@@ -15,8 +18,10 @@ typedef struct {
     uint8_t reg_width;
 } ns16c550_dev;
 
+#define DEFINE_NS16C550(name, base, fifo_size, reg_width) \
+	struct ns16c550_dev name = {&ns16c550_ioctl, base, fifo_size, 0, reg_width};
+
 void ns16c550_init(ns16c550_dev *dev);
-void ns16c550_txbyte(ns16c550_dev *dev, char c);
-char ns16c550_rxbyte(ns16c550_dev *dev);
+int ns16c550_ioctl(ns16c550_dev *dev, gd_ioctl_t, va_list);
 
 #endif

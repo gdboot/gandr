@@ -59,24 +59,60 @@ void ns16c550_init(ns16c550_dev *dev)
     wrreg(dev, UART_FCR, FCR_FIFO_EN | FCR_TX_FIFO_CLEAR | FCR_RX_FIFO_CLEAR);
 }
 
-void ns16c550_txbyte(ns16c550_dev *dev, char c)
+static int write(ns16c550_dev *dev, const char *buf, size_t nbytes)
 {
-    // Check FIFO level
-    do {
+    size_t i = 0;
+
+    // Wait until there is FIFO space
+    while(dev->fifo_space == 0) {
+        // Is FIFO empty?
         if(rdreg(dev, UART_LSR) & LSR_TX_FIFO_EMPTY) {
             // It is - reset the FIFO space variable
             dev->fifo_space = dev->fifo_size;
         }
-    } while(dev->fifo_space == 0);
+    }
 
-    dev->fifo_space--;
-    wrreg(dev, UART_DATA, c);
+    // ..then write as much as possible
+    while(i < nbytes && dev->fifo_space) {
+        wrreg(dev, UART_DATA, buf[i++]);
+        dev->fifo_space--;
+    }
+
+    return i;
 }
 
-char ns16c550_rxbyte(ns16c550_dev *dev)
+static int read(ns16c550_dev *dev, char *buf, size_t nbytes)
 {
-    // Wait until FIFO not empty
+    size_t i = 0;
+
+    // Wait until there is something in the FIFO
     while((rdreg(dev, UART_LSR) & LSR_RX_FIFO_EMPTY) == 0);
 
-    return rdreg(dev, UART_DATA);
+    // Read as much as we can in one go
+    while(i < nbytes && (rdreg(dev, UART_LSR) & LSR_RX_FIFO_EMPTY) != 0) {
+        buf[i++] = rdreg(dev, UART_DATA);
+    }
+    return i;
+}
+
+int ns16c550_ioctl(ns16c550_dev *dev, gd_ioctl_t cmd, va_list ap)
+{
+    switch(cmd) {
+        case gd_ioctl_write: {
+            char const *buf = va_arg(void const*, ap);
+            size_t nbytes   = va_arg(size_t, ap);
+            return write(dev, buf, nbytes);
+        }
+
+        case gd_ioctl_read: {
+            char *buf     = va_arg(void *, ap);
+            size_t nbytes = va_arg(size_t, ap);
+            return read(dev, buf, nbytes);
+        }
+
+        default:
+            return uart_base_ioctl(&dev->ioctl, cmd, ap);
+    }
+
+    }
 }
