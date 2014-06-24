@@ -1,3 +1,2 @@
-SubDir GANDALF_TOP ;
-
-SubIncludeOnce GANDALF_TOP bal ;
+SubDir GD_TOP ;
+SubIncludeOnce GD_TOP bal ;

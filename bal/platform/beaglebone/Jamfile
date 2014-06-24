@@ -1,0 +1,7 @@
+SubDir GD_TOP bal platform beaglebone ;
+
+GdBalSources
+	test.c
+	;
+
+SubIncludeOnce GD_TOP bal device uart ns16c550 ;

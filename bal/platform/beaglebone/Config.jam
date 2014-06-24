@@ -1,0 +1,2 @@
+GdIncludeDir $(GD_TOP) bal platform beaglebone ;
+SOC = am33xx ;

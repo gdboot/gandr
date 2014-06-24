@@ -1,6 +1,7 @@
 *.o
 *.d
 *.flp
+*.iso
 
 # Text editor files.
 *.sublime-*

@@ -1,3 +1,18 @@
+/* Copyright © 2013-2014, Owen Shepherd
+ * 
+ * Permission to use, copy, modify, and/or distribute this software for any 
+ * purpose with or without fee is hereby granted, provided that the above 
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH 
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY 
+ * AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, 
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM 
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR 
+ * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR 
+ * PERFORMANCE OF THIS SOFTWARE.
+ */
+
 #include <bal/bios_services.h>
 
 .code16
@@ -8,6 +23,7 @@
 stack_top    = 0x8000
 scratch_base = 0x8000
 
+.data
 api_table:
     .ascii "BIOS"
     .long api_table_end - api_table
@@ -17,6 +33,7 @@ api_table:
     .word api_int_call, PM_CS16
 api_table_end:
 
+.text
 api_far_call:
     // Set registers as passed
     call pm16_to_rm
@@ -84,4 +101,3 @@ api_int_call:
     movl stack_top - 4, %esp
     // Jump back into (32-bit/64-bit) code
     lretl
-

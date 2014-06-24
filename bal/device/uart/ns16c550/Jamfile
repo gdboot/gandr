@@ -1,0 +1,3 @@
+SubDir GD_TOP bal device uart ns16c550 ;
+
+GdBalSources ns16c550.c ;

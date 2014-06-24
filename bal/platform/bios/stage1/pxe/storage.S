@@ -1,20 +1,21 @@
-/*
- * Disk module (for PXE).
+/* Copyright © 2013-2014, Shikhin Sethi
+ * 
+ * Permission to use, copy, modify, and/or distribute this software for any 
+ * purpose with or without fee is hereby granted, provided that the above 
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH 
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY 
+ * AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, 
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM 
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR 
+ * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR 
+ * PERFORMANCE OF THIS SOFTWARE.
  */
 
 .code16
-.data
-
-// The PXE API pointer.
-.align 4
-pxe_api_addr:
-    .offset:    .word 0
-    .segment:   .word 0
 
 #define PXE_NEW_PRESENT (1 << 0)
-
-pxe_flags:
-    .byte 0
 
 #define UNDI_SHUTDOWN   0x05
 #define UNLOAD_STACK    0x70
@@ -27,10 +28,12 @@ pxe_flags:
 #define TFTP_READ       0x22
 #define TFTP_GET_FSIZE  0x25
 
-#define PACKET_SIZE     512         // 512 bytes is most supported.
-#define UDP_PORT        (69 << 8)   // 69 << 8 in big endian, word.
+#define PXENV_STATUS_TFTP_FILE_NOT_FOUND 0x3B
 
-// The PXENV_GET_CACHED_INFO structure.
+#define PACKET_SIZE     512         //!< 512 bytes is most supported.
+#define UDP_PORT        (69 << 8)   //!< 69 << 8 in big endian, word.
+
+//! The PXENV_GET_CACHED_INFO structure.
     .struct 0
 cached_info_status:
     .struct cached_info_status + 2
@@ -48,20 +51,7 @@ cached_info_sip:
     .struct cached_info_sip + 4
 cached_info_gip:
 
-.data
-pxe_cached_info:
-    .word 0
-    .word 2
-    .word 0
-    .word 0  // Zero implies PXE uses own buffer.
-    .word 0
-    .word 0
-
-    // SIP & GIP part of actual PXENV_GET_CACHED_INFO structure.
-    .long 0
-    .long 0
-
-// The PXENV_TFTP_OPEN structure.
+//! The PXENV_TFTP_OPEN structure.
     .struct 0
 tftp_open_status:
     .struct tftp_open_status + 2
@@ -75,16 +65,7 @@ tftp_open_port:
     .struct tftp_open_port + 2
 tftp_open_packet_size:
 
-.data
-pxe_tftp_open:
-    .word 0
-    .long 0
-    .long 0
-    .skip 128, 0
-    .word 0
-    .word 0
-
-// The PXENV_TFTP_READ structure.
+//! The PXENV_TFTP_READ structure.
     .struct 0
 tftp_read_status:
     .struct tftp_read_status + 2
@@ -97,6 +78,36 @@ tftp_read_buffer_off:
 tftp_read_buffer_seg:
 
 .data
+pxe_cached_info:
+    .word 0
+    .word 2
+    .word 0
+    .word 0  // Zero implies PXE uses own buffer.
+    .word 0
+    .word 0
+
+    // SIP & GIP part of actual PXENV_GET_CACHED_INFO structure.
+    .long 0
+    .long 0
+
+.bss
+// The PXE API pointer.
+.align 4
+pxe_api_addr:
+    .offset:    .word 0
+    .segment:   .word 0
+
+pxe_flags:
+    .byte 0
+
+pxe_tftp_open:
+    .word 0
+    .long 0
+    .long 0
+    .skip 128, 0
+    .word 0
+    .word 0
+
 pxe_tftp_read:
     .word 0
     .word 0
@@ -104,17 +115,58 @@ pxe_tftp_read:
     .word 0
     .word 0
 
-current_file:       .byte -1 // -1 indicates no open file.
-current_file_size:  .long 0  // Size.
+/* Open file's size. */
+file_size:  .long 0
 
 .text
 
-/*
- * Call the PXE API (both before 2.1 and after).
- *     ds:di -> the address of the input buffer.
- *     bx -> the "opcode".
+/*! Copies n characters, unless source string terminates.
+ *  NOTE: doesn't handle segment overflow on destination.
+ *      \param ds:si source
+ *      \param es:di destination
+ *      \param cx maximum limit
+ *      \return Incremented ds:si, es:di.
+ */
+strncpy:
+    push %ax
+    push %cx
+    push %bx
+
+    .loop:
+        lodsb
+        stosb
+
+        test %si, %si
+        jnz 0f
+
+        // Segment overflow.
+        mov %ds, %bx
+        add $0x1000, %bx
+        mov %bx, %ds
+
+    0:
+        test %al, %al
+        jz .ret
+
+        loop .loop
+
+    .ret:
+        pop %bx
+        pop %cx
+        pop %ax
+
+        ret
+
+/*! Call the PXE API (both before 2.1 and after).
+ *      \param ds:di the address of the input buffer
+ *      \param bx the "opcode"
  */
 pxe_api:
+    push %ecx
+    push %edx
+    push %esi
+    push %edi
+
     // NOTE: 
     // The above registers are what the legacy API also used.
     // And we push it over here, so that we have no problems with the new API.
@@ -125,14 +177,68 @@ pxe_api:
     lcall *(pxe_api_addr)
     
     add $6, %sp
+
+    pop %edi
+    pop %esi
+    pop %edx
+    pop %ecx
     ret
 
-/*
- * Initialize PXE.
- *     es:bx -> the PXENV+ structure.
- *     ss:sp + 4 -> the !PXE structure (if valid).
- *
- * Trashes bp.
+/*! Print out PXE error message.
+ *      \param ebx opcode
+ *      \param si file name (null if no file)
+ *      \param ax return status code
+ */
+pxe_error:
+    push %si
+    mov $stage1_error_msg, %si
+    call output_string
+    pop %si
+
+    test %si, %si
+    jz 0f
+
+    push %si
+    mov $pxe_file_error_msg_1, %si
+    call output_string
+    pop %si
+    call output_string
+    mov $pxe_file_error_msg_2, %si
+    call output_string
+
+0:
+    movzwl %ax, %eax
+    mov $.pxe_error_status, %di
+    call itoa
+    mov %ebx, %eax
+    mov $.pxe_error_opcode, %di
+    call itoa
+
+    mov $pxe_error_msg, %si
+    call output_string
+
+    jmp abort_boot_hcf
+
+.data
+pxe_file_error_msg_1:
+    .ascii "File "
+    .byte 0
+pxe_file_error_msg_2:
+    .ascii ": "
+    .byte 0
+
+pxe_error_msg:
+    .ascii "PXE function 0x"
+    .pxe_error_opcode: .ascii "00000000"
+    .ascii " returned status 0x"
+    .pxe_error_status: .ascii "00000000"
+    .ascii "."
+
+.text
+/*! Initialize PXE.
+ *      \param es:bx the PXENV+ structure
+ *      \param ss:sp + 4 the !PXE structure (if valid)
+ *      \return Trashes bp.
  */
 .global storage_init
 storage_init:
@@ -143,10 +249,10 @@ storage_init:
     pushal
 
     // Check PXENV signature.
-    cmpl $0x4E455850 /*PXEN*/, %es:(%bx)
+    cmpl $0x4E455850 /* PXEN */, %es:(%bx)
     jne .error_no_pxe
 
-    cmpw $0x2B56 /*V+*/, %es:4(%bx)
+    cmpw $0x2B56 /* V+ */, %es:4(%bx)
     jne .error_no_pxe
 
     // Get the size of the structure (bx + 4) in ecx.
@@ -169,7 +275,7 @@ storage_init:
     pop %bx
     // If version is greater than 2.1, try !PXE.
     cmpw $0x0201, %es:6(%bx)
-    jge .new_version
+    jae .new_version
 
     .pxenv:
         mov %es:0x0A(%bx), %ecx
@@ -187,7 +293,7 @@ storage_init:
         mov %ss:2(%bp), %bx
         mov %ax, %es
 
-        cmpl $0x45585021 /*!PXE*/, %es:(%bx)
+        cmpl $0x45585021 /* !PXE */, %es:(%bx)
         jne .error_new_pxe
 
         movzbl %es:4(%bx), %ecx
@@ -223,7 +329,11 @@ storage_init:
 
         call pxe_api
 
-        or (pxe_cached_info), %ax
+        test %ax, %ax
+        jnz .error_get_cached_info
+
+        mov (pxe_cached_info), %ax
+        test %ax, %ax
         jnz .error_get_cached_info
 
         // Store the SIP & GIP over.
@@ -254,41 +364,42 @@ storage_init:
         jmp .pxenv
 
     .error_get_cached_info:
-    .error_no_pxe:
-        /* TODO: ERROR HANDLING. */
-        hlt
-        jmp .error_no_pxe
+        xor %ax, %ax
+        xor %si, %si
+        mov %ax, %es
+        mov $GET_CACHED_INFO, %ebx
+        jmp pxe_error
 
-/*
- * Opens a file to be read from.
- *     ds:si -> points to the file name.
- *
- * Returns: 
- *     ecx -> size of the file.
- *     Carry set on error.
+    .error_no_pxe:
+        xor %ax, %ax
+        mov %ax, %es
+        mov $no_pxe_error_msg, %si
+        jmp abort_boot
+
+.data
+no_pxe_error_msg:
+    .ascii "Boot mechanism does not appear to be PXE compliant."
+    .byte 0
+
+.text
+/*! Opens a file to be read from.
+ *      \param esi points to the file name
+ *      \return If file not found, eax non-zero. Else, aborts boot on error.
  */
 .global file_open
 file_open:
+    xor %eax, %eax
     pushal
     push %ds
 
-    xor %ax, %ax
-    mov %ax, %ds    
+    mov %esi, %eax
 
-    // If any file is open, error.
-    cmpb $-1, (current_file)
-    jne .open_error
+    // Get the segment.
+    shr $4, %eax
+    mov %ax, %ds
 
-    // Initialize pxe_tftp_open structure.
-    movw %ax, (pxe_tftp_open)
-
-    movw $UDP_PORT, (pxe_tftp_open + tftp_open_port)
-    movw $PACKET_SIZE, (pxe_tftp_open + tftp_open_packet_size)
-
-    mov (pxe_cached_info + cached_info_sip), %eax
-    mov %eax, (pxe_tftp_open + tftp_open_sip)
-    mov (pxe_cached_info + cached_info_gip), %eax
-    mov %eax, (pxe_tftp_open + tftp_open_gip)
+    // And the offset.
+    and $0x000F, %esi
 
     mov $(pxe_tftp_open + tftp_open_filename), %di
     mov $0x746f6f62 /* boot */, %eax
@@ -296,37 +407,138 @@ file_open:
     mov $0x2f, /* / */ %al
     stosb
 
-    pop %ds
-    push %ds
-
     mov 127 - 5, %cx    // 5 bytes comprise of boot/.
     call strncpy
 
     xor %ax, %ax
-    mov %ax, %ds 
+    mov %ax, %ds    
+
+    // Initialize pxe_tftp_open structure.
+    movw %ax, (pxe_tftp_open)
+
+    mov (pxe_cached_info + cached_info_sip), %eax
+    mov %eax, (pxe_tftp_open + tftp_open_sip)
+    mov (pxe_cached_info + cached_info_gip), %eax
+    mov %eax, (pxe_tftp_open + tftp_open_gip)
+
+    movl $0, (pxe_tftp_open + tftp_open_port)
+
+    mov $pxe_tftp_open, %di
+    mov $TFTP_GET_FSIZE, %bx
+    call pxe_api
+
+    test %ax, %ax
+    jnz .open_fsize_error
+
+    mov (pxe_tftp_open), %ax
+    test %ax, %ax
+    jnz .open_fsize_error
+
+    mov (pxe_tftp_open + tftp_open_port), %ecx
+    mov %ecx, (file_size)
+
+    movw $UDP_PORT, (pxe_tftp_open + tftp_open_port)
+    movw $PACKET_SIZE, (pxe_tftp_open + tftp_open_packet_size)
 
     mov $pxe_tftp_open, %di
     mov $TFTP_OPEN, %bx
     call pxe_api
 
-    orw (pxe_tftp_open), %ax
-    jnz .open_error
+    test %ax, %ax
+    jnz .open_fopen_error
 
-    clc
+    mov (pxe_tftp_open), %ax
+    test %ax, %ax
+    jnz .open_fopen_error
+
     .open_ret:
         pop %ds
         popal
         ret
 
-    .open_error:
-        stc
-        jmp .open_ret
+    .file_not_found:
+        // Error out.
+        pop %ds
+        popal
+        not %eax
+        ret
 
-/*
- * Close the currently open file.
- *
- * Returns: 
- *     Carry set on error.
+    .open_fsize_error:
+        cmpw $PXENV_STATUS_TFTP_FILE_NOT_FOUND, (pxe_tftp_open)
+        je .file_not_found
+
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_GET_FSIZE, %ebx
+        jmp pxe_error
+
+    .open_fopen_error:
+        cmpw $PXENV_STATUS_TFTP_FILE_NOT_FOUND, (pxe_tftp_open)
+        je .file_not_found
+
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_OPEN, %ebx
+        jmp pxe_error
+
+/*! Reads the currently open file.
+ *      \param edi where to read the file to
+ *      \return Aborts boot on error.
+ */
+.global file_read
+file_read:
+    pushal
+
+    movl (file_size), %ecx
+    .read:
+        mov %edi, %edx
+        mov %edi, %ebx
+        and $0x000F, %ebx
+        shr $4, %edx
+        // Segment in EDX, offset in EBX.
+
+        mov %bx, (pxe_tftp_read + tftp_read_buffer_off)
+        mov %dx, (pxe_tftp_read + tftp_read_buffer_seg)
+
+        movl $0, (pxe_tftp_read + tftp_read_status)
+        movw $0, (pxe_tftp_read + tftp_read_buffer_size)
+
+        push %di
+
+        mov $pxe_tftp_read, %di
+        mov $TFTP_READ, %bx
+        call pxe_api
+
+        pop %di
+
+    .read_loop:
+        test %ax, %ax
+        jnz .read_error
+
+        mov (pxe_tftp_read), %ax
+        test %ax, %ax
+        jnz .read_error
+
+        movzwl (pxe_tftp_read + tftp_read_buffer_size), %edx
+        cmp $PACKET_SIZE, %edx
+        jb .read_ret
+
+        add %edx, %edi
+        cmp %edx, %ecx
+        jbe .read_ret
+
+        sub %edx, %ecx
+        jmp .read
+
+    .read_ret:
+        popal
+        ret
+
+    .read_error:
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_READ, %ebx
+        jmp pxe_error
+
+/*! Close the currently open file.
+ *      \return Aborts boot on error.
  */
 .global file_close  
 file_close:
@@ -338,16 +550,18 @@ file_close:
     mov $TFTP_CLOSE, %bx
     call pxe_api
 
-    orw (pxe_tftp_open), %ax
+    test %ax, %ax
     jnz .close_error
 
-    movb $-1, (current_file)
+    mov (pxe_tftp_open), %ax
+    test %ax, %ax
+    jnz .close_error
 
-    clc
     .close_ret:
         popal
         ret
 
     .close_error:
-        stc
-        jmp .close_ret
+        mov $(pxe_tftp_open + tftp_open_filename), %si
+        mov $TFTP_CLOSE, %ebx
+        jmp pxe_error

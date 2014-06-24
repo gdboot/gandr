@@ -38,7 +38,7 @@ rule _SubSetIncluded {
         $(1:J=__)_INCLUDED = 1 ;
     }
 
-    SUBDIRHDRS += $(GANDALF_INCLUDE_DIRS) ;
+    SUBDIRHDRS += $(GD_INCLUDE_DIRS) ;
 }
 
 # JamBase invokes all rules specified in SUBDIRRULES when a new subdir is 
@@ -46,12 +46,12 @@ rule _SubSetIncluded {
 SUBDIRRULES += _SubSetIncluded ;
 
 # Adds Bal source files
-rule GandalfBalSources {
+rule GdBalSources {
     local _obj = $(1:S=$(SUFOBJ)) ;
     MakeLocate $(_obj) : $(LOCATE_TARGET) ;
-    GANDALF_BAL_OBJECTS += [ FGristFiles $(_obj) ] ;
+    GD_BAL_OBJECTS += [ FGristFiles $(_obj) ] ;
     Objects $(1) ;
-    ObjectHdrs $(1) : $(GANDALF_INCLUDE_DIRS) ;
+    ObjectHdrs $(1) : $(GD_INCLUDE_DIRS) ;
 }
 
 ## ObjCopy
@@ -67,9 +67,9 @@ actions ObjCopy {
 }
 
 # Add an include dir (Config.jam) 
-# GandalfIncludeDir $(GANDALF_TOP) dir dir dir ;
-rule GandalfIncludeDir {
-    GANDALF_INCLUDE_DIRS += [ FDirName $(1) ] ;
+# GdIncludeDir $(GD_TOP) dir dir dir ;
+rule GdIncludeDir {
+    GD_INCLUDE_DIRS += [ FDirName $(1) ] ;
 }
 
 # Link using a linker script
@@ -118,7 +118,7 @@ actions AsCpp
     $(CC) -c $(ASFLAGS) $(CCHDRS) $(CCDEFS) -o $(<) $(>)
 }
 
-GD_IOCTL_GEN = [ FDirName $(GANDALF_TOP) tools gd_ioctl_gen ] ;
+GD_IOCTL_GEN = [ FDirName $(GD_TOP) tools gd_ioctl_gen ] ;
 # Parse the ioctl definition
 # GdIoctls lib : <source> ;
 rule GdIoctls {
@@ -149,19 +149,19 @@ actions GdIoctlGen {
 
 # XXX These paths may need consideration once we have KL!
 
-GandalfIncludeDir $(ALL_LOCATE_TARGET) bal include ;
-GandalfIncludeDir $(GANDALF_TOP) include ;
+GdIncludeDir $(ALL_LOCATE_TARGET) bal include ;
+GdIncludeDir $(GD_TOP) include ;
 
 if ! $(PLATFORM) {
     ECHO "Must specify a platform" ;
     EXIT ;
 } else {
-    include [ FDirName $(GANDALF_TOP) bal platform $(PLATFORM) Config.jam ] ;
+    include [ FDirName $(GD_TOP) bal platform $(PLATFORM) Config.jam ] ;
 }
 
 # SoC specification is optional (e.g: i386-bios doesnt' need nor want one)
 if $(SOC) {
-	include [ FDirName $(GANDALF_TOP) bal soc $(SOC) Config.jam ] ;
+	include [ FDirName $(GD_TOP) bal soc $(SOC) Config.jam ] ;
 }
 
 if ! $(ARCH) {
@@ -173,7 +173,7 @@ if ! $(ARCH) {
     ECHO "Supported architectures are: " $(SUPPORTED_ARCHITECTURES:J=", ") ;
     EXIT ;
 } else {
-    include [ FDirName $(GANDALF_TOP) bal arch $(ARCH) Config.jam ] ;
+    include [ FDirName $(GD_TOP) bal arch $(ARCH) Config.jam ] ;
 }
 
 # All of our toolchains are GCC-alikes

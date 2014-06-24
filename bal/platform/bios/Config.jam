@@ -1,13 +1,30 @@
-GandalfIncludeDir $(GANDALF_TOP) include platform bios ;
+GdIncludeDir $(GD_TOP) include platform bios ;
+
 SUPPORTED_ARCHITECTURES = 
     ia32 
     amd64 
     ;
 
+rule GdBalBinaries {
+    local bits = 32 ;
+    if $(ARCH) = amd64 {
+        bits = 64 ;
+    }
+
+    local name = gd_bal.$(bits) ;
+
+    local script = [ FDirName $(GD_TOP) bal platform bios bal$(bits).ld ] ;
+
+    LinkWithScript $(name).elf : $(GD_BAL_OBJECTS) : $(script) ;
+    #LinkLibraries $(name).elf : $(PDCLIB) ;
+    ObjCopy $(name) : $(name).elf : -O binary ;
+    Depends exe : $(name) ;
+}
+
 # BiosStage1 output : name ;
 rule BiosStage1 {
     # Specific sources
-    local specific_srcs =  [ GLOB [ FDirName $(GANDALF_TOP) bal platform bios stage1 $(2) ] : *.S ] ;
+    local specific_srcs =  [ GLOB [ FDirName $(GD_TOP) bal platform bios stage1 $(2) ] : *.S ] ;
 
     local def = BD_$(2:U) ;
 
@@ -29,7 +46,7 @@ rule BiosStage1 {
     }
 
     ObjectDefines $(objs) : $(def) ;
-    LinkWithScript $(<).elf : $(objs) : [ FDirName $(GANDALF_TOP) bal platform bios stage1 link.ld ] ;
+    LinkWithScript $(<).elf : $(objs) : [ FDirName $(GD_TOP) bal platform bios stage1 $(2) link.ld ] ;
     ObjCopy $(<) : $(<).elf : -O binary ;
     DEPENDS exe : $(<) ; 
 }
