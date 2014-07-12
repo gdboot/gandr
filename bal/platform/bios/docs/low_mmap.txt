@@ -2,8 +2,8 @@
 
     0x0600 -> 0x2FFF                Stage 1
     0x3000 -> 0x6FFF                Stage 1.5
-    0x7000 -> 0x8FFF                Stage 1(.5) stack
-    
-    0x9000 -> 0xCFFF                Paging structures (x86_64)
-    0xD000 -> 0xFFFF                BAL stack
+    0x7000 -> 0x7FFF                Stage 1(.5) stack
+
+    0x8000 -> 0xBFFF                Paging structures (x86_64)
+    0xC000 -> 0xFFFF                BAL stack
     0x10000 -> 0x1????              BAL
