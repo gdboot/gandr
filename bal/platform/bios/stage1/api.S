@@ -1,4 +1,4 @@
-/* Copyright © 2013-2014, Owen Shepherd
+/* Copyright © 2013-2014, Owen Shepherd & Shikhin Sethi
  * 
  * Permission to use, copy, modify, and/or distribute this software for any 
  * purpose with or without fee is hereby granted, provided that the above 
@@ -17,18 +17,15 @@
 
 .code16
 
-.global api_table, stack_top, stack_base
+.global api_table, stack_top
 
-// TEMP!
 stack_top    = 0x8000
-scratch_base = 0x8000
 
 .data
 api_table:
     .ascii "BIOS"
     .long api_table_end - api_table
     .long stack_top
-    .long scratch_base
     .word api_far_call, PM_CS16
     .word api_int_call, PM_CS16
 api_table_end:

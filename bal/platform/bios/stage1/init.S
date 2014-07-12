@@ -18,7 +18,6 @@
 .code16
 .section base.start
 
-#define BOOT_STACK          0x8000
 #define BAL_LOAD_ADDRESS    0x10000
 
 /*! Entry point.
@@ -79,7 +78,7 @@ reset_cs:
     // For PXE, there is already a stack set up.
     // And, storage_init requires %ss:%sp to be PXE-sane.
     mov %ax, %ss
-    mov $BOOT_STACK, %sp
+    mov $stack_top, %sp
 #endif
 
     // Clear the BSS.
@@ -139,7 +138,7 @@ not_386_error_msg:
 #ifdef BD_PXE
     mov %ax, %es
     mov %ax, %ss
-    mov $BOOT_STACK, %esp
+    mov $stack_top, %esp
 #endif
 
     mov %ax, %fs
