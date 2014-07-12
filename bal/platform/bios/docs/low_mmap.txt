@@ -1,7 +1,9 @@
 === Memory map of low memory (<1MiB) ===
 
-    0x0600 -> 0x1FFF                Stage 1
-    0x2000 -> 0x5FFF                Filesystem driver
-    0x6000 -> 0x7FFF                Stack
+    0x0600 -> 0x2FFF                Stage 1
+    0x3000 -> 0x6FFF                Stage 1.5
+    0x7000 -> 0x8FFF                Stage 1(.5) stack
     
+    0x9000 -> 0xCFFF                Paging structures (x86_64)
+    0xD000 -> 0xFFFF                BAL stack
     0x10000 -> 0x1????              BAL
