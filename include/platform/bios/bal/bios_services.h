@@ -49,7 +49,6 @@ struct bios_service_table {
     uint32_t size;          //!< sizeof(*this);
 
     uint32_t rm_stack;      //!< Pointer to real mode stack
-    uint32_t rm_scratch;    //!< Pointer to real mode scratch buffer
 
     uint32_t far_call_ptr;  //!< Far pointer to far call entrypoint
     uint32_t int_call_ptr;  //!< Far pointer to int call entrypoint
