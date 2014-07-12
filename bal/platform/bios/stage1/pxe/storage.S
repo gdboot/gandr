@@ -233,6 +233,7 @@ pxe_error_msg:
     .ascii " returned status 0x"
     .pxe_error_status: .ascii "00000000"
     .ascii "."
+    .byte 0
 
 .text
 /*! Initialize PXE.

@@ -202,10 +202,7 @@ not_386_error_msg:
         mov $BAL_LOAD_ADDRESS, %edi
         call file_read
 
-#ifdef BD_PXE
-    /* Only PXE requires closing of file (via TFTP). */
     call file_close
-#endif
 
 //    jmp Lgo_stage2
 

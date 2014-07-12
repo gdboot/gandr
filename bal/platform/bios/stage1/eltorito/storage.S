@@ -151,9 +151,61 @@ int13_extensions_check:
     ret
 
     .no_int13_ext:
-        /* TODO: ERROR. */
-        hlt
-        jmp .no_int13_ext
+        mov $no_int13_ext_error_msg, %si
+        jmp abort_boot
+
+no_int13_ext_error_msg:
+    .ascii "BIOS does not support int 0x13 extensions for el-torito boot."
+    .byte 0
+
+file_name:
+    .word 0
+
+/*! Print out error message.
+ *      \param ah error code
+ *      \param (file_name) file name (null if no file)
+ */
+int13_error:
+    mov $stage1_error_msg, %si
+    call output_string
+
+    cmpw $0, (file_name)
+    je 0f
+
+    mov $int13_file_error_msg_1, %si
+    call output_string
+    mov (file_name), %si
+    call output_string
+    mov $int13_file_error_msg_2, %si
+    call output_string
+
+0:
+    movzbl %ah, %eax
+    mov $.int13_error_status, %di
+    call itoa
+    movzbl (boot_drive), %eax
+    mov $.int13_disk, %di
+    call itoa
+
+    mov $int13_error_msg, %si
+    call output_string
+
+    jmp abort_boot_hcf
+
+int13_file_error_msg_1:
+    .ascii "File "
+    .byte 0
+int13_file_error_msg_2:
+    .ascii ": "
+    .byte 0
+
+int13_error_msg:
+    .ascii "BIOS function int 0x13 (AH = 0x42, DL = 0x"
+    .int13_disk: .ascii "00000000"
+    .ascii ") returned status 0x"
+    .int13_error_status: .ascii "00000000"
+    .ascii "."
+    .byte 0
 
 /*! Does a read via int 0x13 extensions.
  *      \param cx number of blocks to read
@@ -193,10 +245,9 @@ int13_ext_read:
  *      \param ecx number of blocks to read
  *      \param edi destination
  *      \param ebx lba to read from
- *      \return BIOS error code, if any, in al.
+ *      \return Aborts boot on error.
  */
 storage_read:
-    xor %eax, %eax
     pushal
     push %ecx
 
@@ -227,9 +278,9 @@ storage_read:
         mov $1, %cx
         call int13_ext_read
 
-        jc .storage_read_error
+        jc int13_error
         test %ah, %ah
-        jnz .storage_read_error
+        jnz int13_error
 
         sub %ecx, (%esp)
         add %ecx, %ebx
@@ -243,18 +294,12 @@ storage_read:
         popal
         ret
 
-    .storage_read_error:
-        movzbl %ah, %eax
-        mov %eax, 32(%esp)
-        jmp .storage_read_ret
-
 /*! Check a directory for a particular record.
  *      \param ebx the directory's LBA
  *      \param edx length of directory data
  *      \param ds:si record identifier
  *      \return di points to the directory record.
-                eax ~0 on record not found, other non-zero values for disk
-                failure.
+                eax ~0 on record not found, abort for disk failure.
                 Aborts boot if ISO uses XAR/multiple directory records.
  */
 find_directory_record:
@@ -268,9 +313,6 @@ find_directory_record:
         mov $(PVD_BUFFER + SECTOR_SIZE), %edi
         mov $1, %ecx
         call storage_read
-
-        test %eax, %eax
-        jnz .disk_error
 
         .check_record:
             // Zero-length record means next-sector wrapover.
@@ -323,9 +365,6 @@ find_directory_record:
         inc %ebx
         jmp .load_sector
 
-    .disk_error:
-        movl %eax, 30(%esp)
-
     .success:
         add $2, %esp
         popal
@@ -339,9 +378,12 @@ find_directory_record:
 
     .xar_error:
     .multiple_records_error:
-        /* TODO: error handling. */
-        hlt
-        jmp .xar_error
+        mov $xar_multirec_error_msg, %si
+        jmp abort_boot
+
+xar_multirec_error_msg:
+    .ascii "XAR or multiple records for any entry is not supported."
+    .byte 0
 
 /*! Initialize disk.
  *      \param dl boot drive
@@ -370,8 +412,6 @@ storage_init:
     dec %ecx
 
     call storage_read
-    test %eax, %eax
-    jnz .read_error
 
     0:
     // Read PVD.
@@ -380,8 +420,6 @@ storage_init:
     mov $PVD_BUFFER, %edi
 
     call storage_read
-    test %eax, %eax
-    jnz .read_error
 
     cmpw $SECTOR_SIZE, (PVD_BUFFER + pvd_logical_block_size)
     jne .block_size_error
@@ -400,14 +438,9 @@ storage_init:
     mov $boot_dir, %esi
     call find_directory_record
 
-    test %eax, %eax
-    jz 1f
-
     cmp $0xFFFFFFFF, %eax
     je .no_boot_dir_error
-    jmp .read_error
 
-    1:
     testb $DIRREC_FLAG_DIR, directory_record_file_flags(%di)
     jz .no_boot_dir_error
 
@@ -420,12 +453,21 @@ storage_init:
     popal
     ret
 
-    .read_error:
     .block_size_error:
+        mov $block_size_error_msg, %si
+        jmp abort_boot
+
     .no_boot_dir_error:
-        /* TODO: ERROR. */
-        hlt
-        jmp .read_error
+        mov $no_boot_dir_error_msg, %si
+        jmp abort_boot
+
+block_size_error_msg:
+    .ascii "Block size apart from 2048 bytes not supported with ISOs."
+    .byte 0
+
+no_boot_dir_error_msg:
+    .ascii "Invalid ISO with no boot directory."
+    .byte 0
 
 boot_dir:   .ascii "boot"
             .byte 0
@@ -440,7 +482,7 @@ file_dir_rec:   .long 0
 
 /*! Opens a file to be read from.
  *  NOTE: doesn't support sub-directories.
- *      \param esi points to the file name
+ *      \param si points to the file name
  *              If file not found, eax non-zero. Else, aborts boot on error.
  */
 .global file_open
@@ -448,19 +490,16 @@ file_open:
     xor %eax, %eax
     pushal
 
+    mov %si, (file_name)
+
     movl (boot_dir_lba), %ebx
     movl (boot_dir_len), %edx
 
     call find_directory_record
 
-    test %eax, %eax
-    jz 0f
-
     cmp $0xFFFFFFFF, %eax
     je .file_not_found
-    jmp .file_read_error
 
-    0:
     testb $DIRREC_FLAG_DIR, directory_record_file_flags(%di)
     jnz .file_not_found
     movl %edi, (file_dir_rec)
@@ -468,11 +507,6 @@ file_open:
     .ret:
         popal
         ret
-
-    .file_read_error:
-        /* TODO: ERROR. */
-        hlt
-        jmp .file_read_error
 
     .file_not_found:
         popal
@@ -498,8 +532,12 @@ file_read:
     add directory_record_lba(%bp), %ebx
     call storage_read
 
-    test %eax, %eax
-    jnz .file_read_error
-
     popal
+    ret
+
+/*! Closes the currently open file.
+ */
+.global file_close
+file_close:
+    movw $0, (file_name)
     ret
