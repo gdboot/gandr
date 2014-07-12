@@ -2,7 +2,7 @@ ENTRY(_start)
 
 MEMORY
 {
-    STAGE1      : ORIGIN = 0x0600, LENGTH = 0x1A00
+    STAGE1      : ORIGIN = 0x0600, LENGTH = 0x2A00
 }
 
 SECTIONS
