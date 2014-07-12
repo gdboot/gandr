@@ -220,11 +220,6 @@ no_bal_error_msg:
 
 .text
 Lgo_stage2:
-    // Find highest point in conventional memory - that will be our new stack
-    int $0x12
-    movzx %ax, %eax
-    shl $10, %eax
-
     // Stick the right segment in the jump pointer structure
     mov bal_is_64bit, %bl
     mov $PM_CS32, %cx
@@ -246,7 +241,7 @@ Lnot_64bit:
     mov %cx, %fs
     mov %cx, %gs
     mov %cx, %ss
-    mov %eax, %esp
+    mov $bal_stack_top, %esp
 
     mov $api_table, %edi
     data32 ljmp *stage2_entry

@@ -17,9 +17,10 @@
 
 .code16
 
-.global api_table, stack_top
+.global api_table, stack_top, bal_stack_top
 
-stack_top    = 0x8000
+stack_top       = 0x8000
+bal_stack_top   = 0x10000
 
 .data
 api_table:
