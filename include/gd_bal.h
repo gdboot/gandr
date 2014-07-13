@@ -35,7 +35,7 @@ int gd_ioctl(gd_device_t, unsigned, ...);
 #include "gd_ioctl.inc"
 
 #define GD_BEGIN_IOCTL_MAP(_type, _name)                                       \
-static int GD_CONCAT(_name, _ioctl)(gd_device_t dev_, unsigned ioctl, ...)     \
+static int _name(gd_device_t dev_, unsigned ioctl, ...)     \
 {                                                                              \
     int rv = 0;                                                                \
     _type dev = (_type) dev_;                                                  \
