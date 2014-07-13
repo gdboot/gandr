@@ -57,16 +57,6 @@ BEGIN {
             delete ARGV[++i]
         }
     }
-
-    if(header) {
-        print "#ifndef GD_IOCTL_H"  > header
-        print "#define GD_IOCTL_H"  > header
-        print "#include <gd_bal.h>" > header
-        print "#include <stddef.h>" > header
-        print "#include <stdint.h>" > header
-
-        print "int gd_ioctl(gd_device_t, unsigned, ...);" > header
-    }
 }
 
 function strip(str)
@@ -85,12 +75,15 @@ function strip(str)
 }
 
 header {
+    # The define line
     printf("#define %s %d\n", define, NR) > header
 
+    # Any lead parts specified (type forward declarations, for example)
     for(i = 2; i <= num_lead_parts; i++) {
         printf("%s;\n", strip(lead_parts[i])) > header
     }
 
+    # The stub definition
     printf("int gd_%s(gd_device_t", name) > header
 
     for(i = 2; i <= NF; i++) {
@@ -103,6 +96,23 @@ header {
     }
 
     printf(");\n") > header
+
+    # Map entry definition
+
+    printf("#define GD_MAP_%s_IOCTL(_name) \\\n", toupper(name)) > header
+    printf("    case %s: {\\\n", define) > header
+    for(i = 2; i <= NF; i++) {
+        split($i, parts, ":")
+        printf("        %s _arg%d = va_arg(*pap, %s);\\\n", 
+            strip(parts[1]), i, strip(parts[1])) > header
+    }
+    printf("        rv = _name(dev")  > header
+    for(i = 2; i <= NF; i++) {
+        printf(", _arg%d", i) > header
+    }
+    printf(");\\\n") > header
+    printf("        break;\\\n") > header
+    printf("    }\n") > header
 }
 
 list {
@@ -111,7 +121,7 @@ list {
 
 stub {
     # ioctl function
-    print "#include <gd_ioctl.h>" > ioctl_stub;
+    print "#include <gd_bal.h>" > ioctl_stub;
 
 
     printf("int gd_%s(gd_device_t _dev", name) > ioctl_stub;
@@ -137,10 +147,4 @@ stub {
 
     printf("}\n") > ioctl_stub;
     close(ioctl_stub)
-}
-
-END {
-    if(header) {
-        print "#endif" > header
-    }
 }

@@ -126,7 +126,7 @@ rule GdIoctls {
     files = [ FGristFiles $(files) ] ;
     ECHO Files are $(files) ;
 
-    GdIoctlGen $(files) : $(>) : include/gd_ioctl.h : ioctl_stubs ;
+    GdIoctlGen $(files) : $(>) : include/gd_ioctl.inc : ioctl_stubs ;
     Library $(<) : $(files) ioctl_stubs/gd_ioctl_stub.c ;
 }
 
