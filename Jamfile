@@ -1,2 +1,3 @@
 SubDir GD_TOP ;
+SubInclude PDCLIB_TOP ;
 SubIncludeOnce GD_TOP bal ;

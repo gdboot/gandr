@@ -1,6 +1,7 @@
 NOARSCAN = true ;
 ALL_LOCATE_TARGET ?= build ;
 
+################################################################################
 # Save the host toolset information
 
 HOST_TOOLSET    = $(TOOLSET) ;
@@ -21,7 +22,9 @@ HOST_SUFOBJ     = $(SUFOBJ) ;
 HOST_UNDEFFLAG  = $(UNDEFFLAG) ;
 HOST_PICFLAGS   = $(PICFLAG) ;
 
-# Include a file once
+################################################################################
+# Include a file only once
+
 rule SubIncludeOnce {
     if ! $($(1:J=__)_INCLUDED) {
         #ECHO Including $(1) ;
@@ -37,13 +40,38 @@ rule _SubSetIncluded {
     if ! $($(1:J=__)_INCLUDED) {
         $(1:J=__)_INCLUDED = 1 ;
     }
+}
 
+# Add the Gandr include dirs to headers
+rule _AddHeaders {
+    PDCLibConfig ;
     SUBDIRHDRS += $(GD_INCLUDE_DIRS) ;
 }
 
-# JamBase invokes all rules specified in SUBDIRRULES when a new subdir is 
-# entered
-SUBDIRRULES += _SubSetIncluded ;
+################################################################################
+# PDCLib
+
+PDCLIB_NO_TEST          = 1 ;
+PDCLIB_HAVE_PLATFORM    = 1 ;
+PDCLIB_OPTIONS = 
+    nothread
+    notime 
+    dlmalloc 
+    mincoll 
+    tss_errno 
+    basecodecs 
+    c_locale 
+    ;
+
+rule PDCLibTargetHeaders {
+    SubDirHdrs $(GD_TOP) include ;
+}
+
+rule PDCLibTargetConfig { 
+}
+
+################################################################################
+# Gandr special rules
 
 # Adds Bal source files
 rule GdBalSources {
@@ -54,68 +82,11 @@ rule GdBalSources {
     ObjectHdrs $(1) : $(GD_INCLUDE_DIRS) ;
 }
 
-## ObjCopy
-# ObjCopy dest : src : opts ;
-rule ObjCopy {
-    Depends $(<) : $(>) ;
-    MakeLocate $(<) : $(LOCATE_TARGET) ;
-    OPTS on $(<) = $(3) ;
-}
-
-actions ObjCopy {
-    $(OBJCOPY) $(OPTS) $(>) $(<)
-}
 
 # Add an include dir (Config.jam) 
 # GdIncludeDir $(GD_TOP) dir dir dir ;
 rule GdIncludeDir {
     GD_INCLUDE_DIRS += [ FDirName $(1) ] ;
-}
-
-# Link using a linker script
-# LinkWithScript output : objects : script ;
-rule LinkWithScript {
-    # Can't use MainFromObjects as it regrists the files
-    Depends $(<) : $(>) $(3) ;
-    MakeLocate $(<) : $(LOCATE_TARGET) ;
-    Clean clean : $(<) ;
-    LINKFLAGS on $(<) += -T$(3) ;
-}
-
-# We also generate output useful for debugging
-actions LinkWithScript bind NEEDLIBS {
-    $(LINK) $(LINKFLAGS) -o $(<) $(UNDEFS) $(>) $(NEEDLIBS) $(LINKLIBS)
-    $(OBJDUMP) -C -t $(<) > $(<:S=.syms.txt)
-    $(OBJDUMP) -C -S $(<) > $(<:S=.dsm.txt)
-    $(OBJCOPY) --only-keep-debug $(<) $(<:S=.gdb)
-    $(STRIP) --strip-debug $(<)
-    $(OBJCOPY) --add-gnu-debuglink=$(<:S=.gdb) $(<)
-}
-
-# Add support to Jam for .S preprocessed assembly files
-
-# Doesn't recognize S: preprocessed assembly file
-rule UserObject {
-    switch $(>:S) {
-        case .S :   AsCpp $(<) : $(>) ;
-    }
-}
-
-# Add support for preprocessed assembly
-rule AsCpp
-{
-    Depends $(<) : $(>) ;
-
-    ASFLAGS on $(<) += $(ASFLAGS) $(SUBDIRASFLAGS) ;
-
-    CCHDRS on $(<) = [ on $(<) FIncludes $(HDRS) ] ;
-    CCDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
-}
-
-# Pass them to GCC
-actions AsCpp
-{
-    $(CC) -c $(ASFLAGS) $(CCHDRS) $(CCDEFS) -o $(<) $(>)
 }
 
 GD_IOCTL_GEN = [ FDirName $(GD_TOP) tools gd_ioctl_gen ] ;
@@ -143,6 +114,70 @@ rule GdIoctlGen {
 actions GdIoctlGen {
     $(GD_IOCTL_GEN) $(>) -stubdir $(DIR) -stub -hdr $(HDR)
 }
+
+################################################################################
+# Extra rules and toolchain functionality
+
+# Invoke objcopy
+# ObjCopy dest : src : opts ;
+rule ObjCopy {
+    Depends $(<) : $(>) ;
+    MakeLocate $(<) : $(LOCATE_TARGET) ;
+    OPTS on $(<) = $(3) ;
+}
+
+actions ObjCopy {
+    $(OBJCOPY) $(OPTS) $(>) $(<)
+}
+
+# Link using a linker script
+# LinkWithScript output : objects : script ;
+rule LinkWithScript {
+    # Can't use MainFromObjects as it regrists the files
+    Depends $(<) : $(>) $(3) ;
+    MakeLocate $(<) : $(LOCATE_TARGET) ;
+    Clean clean : $(<) ;
+    LINKFLAGS on $(<) += -T$(3) ;
+}
+
+# We also generate output useful for debugging
+actions LinkWithScript bind NEEDLIBS {
+    $(LINK) $(LINKFLAGS) -o $(<) $(UNDEFS) $(>) $(NEEDLIBS) $(LINKLIBS)
+    $(OBJDUMP) -C -t $(<) > $(<:S=.syms.txt)
+    $(OBJDUMP) -C -S $(<) > $(<:S=.sdsm.txt)
+    $(OBJDUMP) -C -d $(<) > $(<:S=.dsm.txt)
+    $(OBJCOPY) --only-keep-debug $(<) $(<:S=.gdb)
+    $(STRIP) --strip-debug $(<)
+    $(OBJCOPY) --add-gnu-debuglink=$(<:S=.gdb) $(<)
+}
+
+# Add support to Jam for .S preprocessed assembly files
+# Doesn't recognize S: preprocessed assembly file
+rule UserObject {
+    switch $(>:S) {
+        case .S :   AsCpp $(<) : $(>) ;
+    }
+}
+
+# Add support for preprocessed assembly
+rule AsCpp
+{
+    Depends $(<) : $(>) ;
+
+    ASFLAGS on $(<) += $(ASFLAGS) $(SUBDIRASFLAGS) ;
+
+    CCHDRS on $(<) = [ on $(<) FIncludes $(HDRS) ] ;
+    CCDEFS on $(<) = [ on $(<) FDefines $(DEFINES) ] ;
+}
+
+# Pass them to GCC
+actions AsCpp
+{
+    $(CC) -c $(ASFLAGS) $(CCHDRS) $(CCDEFS) -o $(<) $(>)
+}
+
+################################################################################
+# Platform, SoC, architecture functionality
 
 # Determine the platform, soc, arch information
 # Do so in that order; platform can imply soc can imply arch
@@ -178,8 +213,8 @@ if ! $(ARCH) {
 
 # All of our toolchains are GCC-alikes
 TOOLSET = gcc ;
-CCFLAGS  += -ffreestanding -g -std=c99 ;
-C++FLAGS += -ffreestanding -g -std=c++0x ;
+CCFLAGS  += -ffreestanding -g ;
+C++FLAGS += -ffreestanding -g ;
 
 AS         = $(TOOLPREFIX)gcc ;
 AR         = $(TOOLPREFIX)ar cru ;
@@ -198,6 +233,19 @@ OBJCOPY    = $(TOOLPREFIX)objcopy ;
 STRIP      = $(TOOLPREFIX)strip ;
 RANLIB     = $(TOOLPREFIX)ranlib ;
 
+################################################################################
+# Include the Jamrules files for our dependencies
+SubRules GD_TOP pdclib : PDCLIB_TOP ;
+
+
+# JamBase invokes all rules specified in SUBDIRRULES when a new subdir is 
+# entered
+#
+# We deferred adding these till here else _AddHeaders gets invoked by the above
+# before PDClibConfig is defined
+SUBDIRRULES += _SubSetIncluded _AddHeaders ;
+
+################################################################################
 # Work around a bug in Jambase
 # XXX This should go into ejam
 

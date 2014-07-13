@@ -9,6 +9,7 @@
 # Kdevelop project files
 *.kdev*
 
+pdclib/
 build/
 
 .bochsrc

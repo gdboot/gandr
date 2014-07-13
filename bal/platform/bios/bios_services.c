@@ -14,10 +14,9 @@
  */
 
 #include <bal/bios_services.h>
+#include <string.h>
 
 struct bios_service_table *bios_services;
-
-extern void* memcpy(void *restrict, const void *restrict, size_t);
 
 static inline void* push(void *restrict *restrict psp, const void *restrict src, size_t len)
 {
