@@ -108,24 +108,7 @@ static int read(ns16c550_dev *dev, char *buf, size_t nbytes)
     return i;
 }
 
-int ns16c550_ioctl(ns16c550_dev *dev, gd_ioctl_t cmd, va_list ap)
-{
-    switch(cmd) {
-        case gd_ioctl_write: {
-            char const *buf = va_arg(void const*, ap);
-            size_t nbytes   = va_arg(size_t, ap);
-            return write(dev, buf, nbytes);
-        }
-
-        case gd_ioctl_read: {
-            char *buf     = va_arg(void *, ap);
-            size_t nbytes = va_arg(size_t, ap);
-            return read(dev, buf, nbytes);
-        }
-
-        default:
-            return uart_base_ioctl(&dev->ioctl, cmd, ap);
-    }
-
-    }
-}
+GD_BEGIN_IOCTL_MAP(ns16c550_dev *, ns16c550_ioctl)
+    GD_MAP_WRITE_IOCTL(write)
+    GD_MAP_READ_IOCTL(read)
+GD_END_IOCTL_MAP_FORWARD(uart_base_ioctl)

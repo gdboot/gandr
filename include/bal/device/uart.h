@@ -34,4 +34,6 @@ struct gd_uart_config {
 	enum gd_uart_flow_control   flow_control;
 };
 
+int gd_uart_base_ioctl(gd_device_t dev, unsigned, ...);
+
 #endif

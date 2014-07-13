@@ -20,7 +20,7 @@
 #include <bal/gio.h>
 
 typedef struct {
-	gd_ioctl_fn_t	ioctl;
+	struct gd_device dev;
 
     //! Base address
     gio_addr base;
@@ -34,9 +34,9 @@ typedef struct {
 } ns16c550_dev;
 
 #define DEFINE_NS16C550(name, base, fifo_size, reg_width) \
-	struct ns16c550_dev name = {&ns16c550_ioctl, base, fifo_size, 0, reg_width};
+	struct ns16c550_dev name = {{&ns16c550_ioctl}, base, fifo_size, 0, reg_width};
 
 void ns16c550_init(ns16c550_dev *dev);
-int ns16c550_ioctl(ns16c550_dev *dev, gd_ioctl_t, va_list);
+int ns16c550_ioctl(gd_device_t dev, unsigned, ...);
 
 #endif
