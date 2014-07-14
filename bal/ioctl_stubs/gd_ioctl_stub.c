@@ -12,7 +12,7 @@
  * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR 
  * PERFORMANCE OF THIS SOFTWARE.
  */
-#include <gd_ioctl.h>
+#include <gd_bal.h>
 
 #ifdef __i386__
 __asm(
@@ -42,7 +42,7 @@ int gd_ioctl(gd_device_t dev, unsigned num, ...)
 {
 	va_list ap;
 	va_start(ap, num);
-	int rv = dev->ioctl(dev, GD_FORWARD_IOCTL, num, ap);
+	int rv = dev->ioctl(dev, GD_FORWARD_IOCTL, num, &ap);
 	va_end(ap);
 	return rv;
 }

@@ -52,23 +52,7 @@ rule _AddHeaders {
 # PDCLib
 
 PDCLIB_NO_TEST          = 1 ;
-PDCLIB_HAVE_PLATFORM    = 1 ;
-PDCLIB_OPTIONS = 
-    nothread
-    notime 
-    dlmalloc 
-    mincoll 
-    tss_errno 
-    basecodecs 
-    c_locale 
-    ;
-
-rule PDCLibTargetHeaders {
-    SubDirHdrs $(GD_TOP) include ;
-}
-
-rule PDCLibTargetConfig { 
-}
+PDCLIB_PLATFORM         = gandr ;
 
 ################################################################################
 # Gandr special rules
@@ -142,7 +126,7 @@ rule LinkWithScript {
 
 # We also generate output useful for debugging
 actions LinkWithScript bind NEEDLIBS {
-    $(LINK) $(LINKFLAGS) -o $(<) $(UNDEFS) $(>) $(NEEDLIBS) $(LINKLIBS)
+    $(LINK) $(LINKFLAGS) -o $(<) $(UNDEFS) $(>) $(NEEDLIBS) $(LINKLIBS) --cref -Map $(<:S=.map.txt)
     $(OBJDUMP) -C -t $(<) > $(<:S=.syms.txt)
     $(OBJDUMP) -C -S $(<) > $(<:S=.sdsm.txt)
     $(OBJDUMP) -C -d $(<) > $(<:S=.dsm.txt)
@@ -232,6 +216,9 @@ OBJDUMP    = $(TOOLPREFIX)objdump ;
 OBJCOPY    = $(TOOLPREFIX)objcopy ;
 STRIP      = $(TOOLPREFIX)strip ;
 RANLIB     = $(TOOLPREFIX)ranlib ;
+
+# Find libgcc
+LIBGCC = [ COMMAND $(CC) $(CCFLAGS) $(OPTIM) $(CCDEFS) -print-libgcc-file-name ] ;
 
 ################################################################################
 # Include the Jamrules files for our dependencies

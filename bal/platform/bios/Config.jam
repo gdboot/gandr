@@ -16,7 +16,7 @@ rule GdBalBinaries {
     local script = [ FDirName $(GD_TOP) bal platform bios bal$(bits).ld ] ;
 
     LinkWithScript $(name).elf : $(GD_BAL_OBJECTS) : $(script) ;
-    LinkLibraries  $(name).elf : $(PDCLIB) ;
+    LinkLibraries  $(name).elf : $(PDCLIB) libgdioctl.a $(LIBGCC) ;
     ObjCopy $(name) : $(name).elf : -O binary ;
     Depends exe : $(name) ;
 }

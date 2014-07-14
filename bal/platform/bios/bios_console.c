@@ -16,16 +16,16 @@
 #include <bal/bios_console.h>
 #include <bal/bios_services.h>
 
-static int bios_console_write(struct bios_console_dev *dev, const void *buf, size_t sz)
+static int bios_console_write(struct bios_console_dev *dev, const void *buf, size_t sz, size_t *wrote)
 {
     const unsigned char *cbuf = buf;
 
     struct bios_registers regs = { 0 };
 
-    for(size_t i = 0; i < sz; i++) {
+    for (size_t i = 0; i < sz; i++) {
         unsigned char c = cbuf[i];
 
-        if(c == '\n') {
+        if (c == '\n') {
             // BIOS is a CRLF platform
             regs.ebx = dev->cur_page << 8;
             regs.eax = 0x0E00 | '\r';
@@ -37,7 +37,7 @@ static int bios_console_write(struct bios_console_dev *dev, const void *buf, siz
         bios_int_call(0x10, &regs);
     }
 
-    return 0;
+    return *wrote = sz, 0;
 }
 
 GD_BEGIN_IOCTL_MAP(struct bios_console_dev *, bios_console_ioctl)
