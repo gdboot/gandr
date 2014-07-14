@@ -26,6 +26,8 @@
 #define PM_DS64 PM_DS32
 
 #ifndef __ASSEMBLER__
+#include <assert.h>
+#include <stddef.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -58,6 +60,22 @@ extern struct bios_service_table *bios_services;
 
 void bios_far_call(uint32_t address, struct bios_registers *regs, const void* stack_data, unsigned stack_size);
 void bios_int_call(uint8_t  num,     struct bios_registers *regs);
+
+/*! Get a real mode far pointer from the given linear address */
+static inline uint32_t rm_far_from_ptr(const void *p) 
+{
+    uintptr_t v = (uintptr_t) p;
+    uint32_t fp = (v << 12 & 0xFFFF0000) | (v & 0x0F);
+    return fp;
+}
+
+/*! Convert a real mode far pointer to a linear address */
+static inline void* rm_ptr_from_far(uint32_t fp) {
+    uintptr_t v = (fp >> 12 & 0x000FFFF0) + (fp & 0xFFFF);
+    return (void*) v;
+}
+
+
 #endif
 
 #endif
