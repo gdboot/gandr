@@ -13,7 +13,10 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <stdio.h>
+
 void _start()
 {
+    printf("Hello, world!\n");
     for(;;);
 }
