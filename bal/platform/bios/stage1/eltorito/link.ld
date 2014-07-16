@@ -31,5 +31,5 @@ SECTIONS
         bss_end = ABSOLUTE(.);
     } >STAGE1
 
-    ASSERT(_bootsector_end - _bootsector_start < 2048, "Bootsector must be < 2048 bytes");
+    ASSERT(_bootsector_end - _bootsector_start < 2048, "Bootsector must be < 2048 bytes")
 }
