@@ -1,21 +1,19 @@
+LD_FEATURE("SANE_EXPR")
 ENTRY(_start)
 
 MEMORY
 {
-    BOOT_SECTOR : ORIGIN = 0x0600, LENGTH = 0x800
     STAGE1      : ORIGIN = 0x0600, LENGTH = 0x2A00
 }
 
 SECTIONS
 {
-    .base 0x0600 :
-    {
-        *(base.start)
-        *(base)
-    } >BOOT_SECTOR
-
     .text :
     {
+    _bootsector_start = .;
+        *(base.start)
+        *(base)
+    _bootsector_end = .;
         *(.text*)
         *(.rodata*)
     } >STAGE1
@@ -32,4 +30,6 @@ SECTIONS
         *(COMMON)
         bss_end = ABSOLUTE(.);
     } >STAGE1
+
+    ASSERT(_bootsector_end - _bootsector_start < 2048, "Bootsector must be < 2048 bytes");
 }
