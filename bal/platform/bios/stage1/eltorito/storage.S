@@ -80,7 +80,6 @@ directory_record_file_identifier:
 #define DIRREC_FLAG_MULTIPLE_RECORDS    (1 << 7)
 
 .bss
-boot_drive: .byte 0
 lba_packet:
     .byte 0
     .byte 0
@@ -94,6 +93,8 @@ lba_packet:
 .equ PVD_BUFFER, 0x2000
 
 .section base
+
+boot_drive: .byte 0
 
 /*! Converts character to uppercase.
  *      \param al character.
