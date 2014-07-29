@@ -16,6 +16,12 @@
 #include <bal/bios_services.h>
 #include <string.h>
 
+#ifdef __i386__
+ #define R(x) "%%e" #x
+#else
+ #define R(x) "%%r" #x
+#endif
+
 struct bios_service_table *bios_services;
 
 static inline void* push(void *restrict *restrict psp, const void *restrict src, size_t len)
@@ -26,7 +32,7 @@ static inline void* push(void *restrict *restrict psp, const void *restrict src,
 
 void bios_far_call(uint32_t address, struct bios_registers *regs, const void *stack_data, unsigned stack_size)
 {
-    void *sp = (void*) bios_services->rm_stack;
+    void *sp = (void*) (uintptr_t) bios_services->rm_stack;
 
     uint32_t tmp = 0;
 
@@ -55,15 +61,15 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
         // frame
         "sub $8, %%esp\n"
         "mov %%cs, %%eax\n"
-        "mov %%eax, 4(%%esp)\n"
+        "mov %%eax, 4(" R(sp) ")\n"
         "mov $1f, %%eax\n"
-        "mov %%eax, 0(%%esp)\n"
+        "mov %%eax, 0(" R(sp) ")\n"
 
         // Stash esp on the real mode stack
         "mov %%esp, %[ret_info]\n"
 
         // Switch to real mode stack and jump in
-        "mov %[sp], %%esp\n"
+        "mov %[sp], " R(sp) "\n"
         "ljmp *%[far_call_tvec]\n"
 
         "1:\n"
@@ -89,7 +95,7 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
 
 void bios_int_call(uint8_t num, struct bios_registers *regs)
 {
-    void *sp = (void*) bios_services->rm_stack;
+    void *sp = (void*) (uintptr_t) bios_services->rm_stack;
 
     uint32_t tmp = 0;
 
@@ -112,15 +118,15 @@ void bios_int_call(uint8_t num, struct bios_registers *regs)
         // frame
         "sub $8, %%esp\n"
         "mov %%cs, %%ebx\n"
-        "mov %%ebx, 4(%%esp)\n"
+        "mov %%ebx, 4(" R(sp) ")\n"
         "mov $1f, %%ebx\n"
-        "mov %%ebx, 0(%%esp)\n"
+        "mov %%ebx, 0(" R(sp) ")\n"
 
         // Stash esp on the real mode stack
         "mov %%esp, %[ret_info]\n"
 
         // Switch to real mode stack and jump in
-        "mov %[sp], %%esp\n"
+        "mov %[sp], " R(sp) "\n"
         "ljmp *%[int_call_tvec]\n"
 
         "1:\n"

@@ -1,0 +1,6 @@
+GdIncludeDir $(GD_TOP) include arch amd64 ;
+GdIncludeDir $(GD_TOP) include arch x86  ;
+
+TOOLPREFIX = x86_64-elf- ;
+
+ECHO amd64 ;
