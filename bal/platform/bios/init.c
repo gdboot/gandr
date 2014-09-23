@@ -14,9 +14,16 @@
  */
 
 #include <stdio.h>
+#include <_PDCLIB_io.h>
+#include <bal/bios_console.h>
+
+struct bios_console_dev bios_console;
 
 void _start()
 {
+    bios_console_init(&bios_console);
+    stdout->handle.pointer = &bios_console.dev;
+
     printf("Hello, world!\n");
     for(;;);
 }
