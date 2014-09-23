@@ -203,7 +203,7 @@ not_386_error_msg:
 
     call file_close
 
-//    jmp Lgo_stage2
+    jmp Lgo_stage2
 
     .hlt:
         hlt
@@ -220,22 +220,28 @@ no_bal_error_msg:
 
 .text
 Lgo_stage2:
+    cli
+    // Load the GDT.
+    lgdt gdtr
+
     // Stick the right segment in the jump pointer structure
     mov bal_is_64bit, %bl
     mov $PM_CS32, %cx
     test %bl, %bl
-    jnz Lnot_64bit
+    jz Lnot_64bit
     mov $PM_CS64, %cx
+    // TODO: set cr0 flags, and other control registers.
 Lnot_64bit:
     mov %cx, stage2_entry+4
 
-    // TOOD: Find entrypoint of stage2
-    // That goes into the jump pointer structure :-)
-    // movl (...), stage2_entry
+    mov $BAL_LOAD_ADDRESS >> 4, %cx
+    mov %cx, %es
+    es mov (BAL_LOAD_ADDRESS & 0x0F) + 0x04, %eax
+    mov %eax, stage2_entry
 
     // Setup (64/32-bit) protected mode and go
     call rm_to_pm16
-    mov PM_DS32, %cx
+    mov $PM_DS32, %cx
     mov %cx, %ds
     mov %cx, %es
     mov %cx, %fs

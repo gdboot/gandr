@@ -18,6 +18,35 @@
                 .code16
 
                 .section .data
+
+.global gdtr
+gdtr:
+    .word (8 * 6) - 1
+    .long gdt
+
+gdt:
+    .long 0x00000000, 0x00000000
+
+    // CS16.
+    .word 0xFFFF, 0x0000
+    .byte 0x00, 0x9A, 0x0F, 0x00
+
+    // DS16.
+    .word 0xFFFF, 0x0000
+    .byte 0x00, 0x92, 0x0F, 0x00
+
+    // CS32.
+    .word 0xFFFF, 0x0000
+    .byte 0x00, 0x9A, 0xCF, 0x00
+
+    // DS32.
+    .word 0xFFFF, 0x0000
+    .byte 0x00, 0x92, 0xCF, 0x00
+
+    // CS64.
+    .long 0x00000000
+    .byte 0x00, 0x98, 0x20, 0x00
+
                 // Bits that need to be set to enter and exit protected mode
                 // If we are loading a 64-bit BAL, these will be adjusted to set/clear
                 // CR0.PG as well.
