@@ -250,6 +250,7 @@ Lnot_64bit:
     mov $bal_stack_top, %esp
 
     mov $api_table, %edi
+Ljump_to_stage_2:
     data32 ljmp *stage2_entry
 
     .comm stage2_entry, 6

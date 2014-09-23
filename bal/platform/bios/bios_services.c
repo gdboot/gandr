@@ -70,7 +70,7 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void *st
 
         // Switch to real mode stack and jump in
         "mov %[sp], " R(sp) "\n"
-        "ljmp *%[far_call_tvec]\n"
+        "data16 ljmp *%[far_call_tvec]\n"
 
         "1:\n"
 #ifdef __i386__
@@ -113,7 +113,6 @@ void bios_int_call(uint8_t num, struct bios_registers *regs)
 #endif
         // (On long mode we rely on preservation of r8+ to satifsy the compiler)
 
-
         // Use this rather than push to produce a 32-bit compatible far return
         // frame
         "sub $8, %%esp\n"
@@ -127,7 +126,7 @@ void bios_int_call(uint8_t num, struct bios_registers *regs)
 
         // Switch to real mode stack and jump in
         "mov %[sp], " R(sp) "\n"
-        "ljmp *%[int_call_tvec]\n"
+        "data16 ljmp *%[int_call_tvec]\n"
 
         "1:\n"
 #ifdef __i386__

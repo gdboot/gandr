@@ -39,11 +39,13 @@ struct bios_registers {
     uint32_t edi;
     uint32_t esi;
     uint32_t ebp;
+    uint32_t esp;
     uint32_t ebx;
     uint32_t edx;
     uint32_t ecx;
     uint32_t eax;
     uint32_t eflags;
+
 };
 
 struct bios_service_table {
@@ -62,7 +64,7 @@ void bios_far_call(uint32_t address, struct bios_registers *regs, const void* st
 void bios_int_call(uint8_t  num,     struct bios_registers *regs);
 
 /*! Get a real mode far pointer from the given linear address */
-static inline uint32_t rm_far_from_ptr(const void *p) 
+static inline uint32_t rm_far_from_ptr(const void *p)
 {
     uintptr_t v = (uintptr_t) p;
     uint32_t fp = (v << 12 & 0xFFFF0000) | (v & 0x0F);

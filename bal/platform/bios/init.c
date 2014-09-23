@@ -15,12 +15,23 @@
 
 #include <stdio.h>
 #include <_PDCLIB_io.h>
+#include <bal/bios_services.h>
 #include <bal/bios_console.h>
 
 struct bios_console_dev bios_console;
 
-void _start()
+__asm__(
+".globl _start\n"
+"_start: push %edi\n"
+"        call __start\n"
+"        jmp .\n"
+);
+
+void __start(struct bios_service_table *pbios_services);
+void __start(struct bios_service_table *pbios_services)
 {
+    bios_services = pbios_services;
+    __asm("xchg %bx, %bx");
     bios_console_init(&bios_console);
     stdout->handle.pointer = &bios_console.dev;
 

@@ -42,12 +42,12 @@ api_far_call:
     popw %gs
 
     popal
-    popf
+    popfl
 
     popl far_call_ptr
     lcall *far_call_ptr
 
-    pushf
+    pushfl
     pushal
     pushw %gs
     pushw %fs
@@ -78,11 +78,11 @@ api_int_call:
     popw %gs
 
     popal
-    popf
+    popfl
 
 1:  int $0x00
 
-    pushf
+    pushfl
     pushal
     pushw %gs
     pushw %fs
