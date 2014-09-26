@@ -119,11 +119,11 @@ void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
 
     /* TODO: look after attributes. */
     if (idx) {
-        fix_overlap(table, idx - 1);
         merge_adjacent(table, idx - 1);
+        fix_overlap(table, idx - 1);
     }
     if (idx < ((table->header.length - sizeof (gd_table))/sizeof (gd_memory_map_entry) - 1)) {
-        fix_overlap(table, idx);
         merge_adjacent(table, idx);
+        fix_overlap(table, idx);
     }
 }
