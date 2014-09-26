@@ -13,7 +13,7 @@
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <gd_bal.h>
+#include <gd_common.h>
 #include <string.h>
 
 static gd_memory_type overlap_precedence[] = {
