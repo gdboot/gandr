@@ -18,10 +18,10 @@
 
 static gd_memory_type overlap_precedence[] = {
     /*! The overlapping region is promoted to the one that comes earlier. */
-    EfiUnusableMemory, EfiPalCode, EfiMemoryMappedIOPortSpace, EfiMemoryMappedIO,
-    EfiACPIMemoryNVS, EfiRuntimeServicesCode, EfiRuntimeServicesData,
-    EfiACPIReclaimMemory, EfiLoaderCode, EfiLoaderData, EfiBootServicesCode,
-    EfiBootServicesData, EfiConventionalMemory, EfiReservedMemoryType
+    gd_unusable_memory, gd_pal_code, gd_mmio_port_space, gd_mmio,
+    gd_acpi_memory_nvs, gd_runtime_services_code, gd_runtime_services_data,
+    gd_acpi_reclaim_memory, gd_loader_code, gd_loader_data, gd_boot_services_code,
+    gd_boot_services_data, gd_conventional_memory, gd_reserved_memory_type
 };
 
 /*! Returns the type with higher precedence. */
@@ -36,7 +36,7 @@ static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
     }
 
     // Unusable.
-    return EfiUnusableMemory;
+    return gd_unusable_memory;
 }
 
 static void merge_adjacent(gd_memory_map_table *table, size_t first_idx)

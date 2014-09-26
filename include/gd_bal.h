@@ -118,20 +118,20 @@ static inline gd_table *gd_next_table(const gd_table *table)
  *  Type codes 0x8000_0000 - 0xFFFF_FFFF are Gandr defined
  */
 typedef enum {
-    EfiReservedMemoryType = 0,
-    EfiLoaderCode,
-    EfiLoaderData,
-    EfiBootServicesCode,
-    EfiBootServicesData,
-    EfiRuntimeServicesCode,
-    EfiRuntimeServicesData,
-    EfiConventionalMemory,
-    EfiUnusableMemory,
-    EfiACPIReclaimMemory,
-    EfiACPIMemoryNVS,
-    EfiMemoryMappedIO,
-    EfiMemoryMappedIOPortSpace,
-    EfiPalCode,
+    gd_reserved_memory_type = 0,
+    gd_loader_code,
+    gd_loader_data,
+    gd_boot_services_code,
+    gd_boot_services_data,
+    gd_runtime_services_code,
+    gd_runtime_services_data,
+    gd_conventional_memory,
+    gd_unusable_memory,
+    gd_acpi_reclaim_memory,
+    gd_acpi_memory_nvs,
+    gd_mmio,
+    gd_mmio_port_space,
+    gd_pal_code,
 
     /*! ARM EABI and similar make enum sizes dependent upon their max value
      *  Force this enum to 32-bits
