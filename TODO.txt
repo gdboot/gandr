@@ -1,8 +1,5 @@
 === TODO ===
 
-    * Jump to BAL. (shikhin)
-    * Integrate PDCLib into BAL. (XgF)
-    * Add memory map generation.
     * Find requisite tables.
     * Add boot device handling code.
     * Add open/read/close for supported filesystems.

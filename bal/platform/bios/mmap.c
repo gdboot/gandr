@@ -238,6 +238,7 @@ void mmap_init()
         struct bios_registers regs = { 0 };
         bios_int_call(0x12, &regs);
 
+        /* todo: does this need entries for EBDA or BIOS region? */
         gd_memory_map_entry entries[] = {
             { .physical_start = 0x00000000,
               .size = regs.eax * 1024,
@@ -265,6 +266,7 @@ void mmap_init()
     }
 
     /* todo: pxe */
+    /* todo: self */
     gd_memory_map_entry low_mem = {
         .physical_start = 0x0000,
         .size = 0x0600,           /* BDA lasts till 0x501. */
