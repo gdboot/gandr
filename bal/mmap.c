@@ -39,14 +39,16 @@ static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
     return gd_unusable_memory;
 }
 
-static void merge_adjacent(gd_memory_map_table *table, size_t first_idx)
+static void merge_adjacent(gd_memory_map_table *table)
 {
-    if ((table->entries[first_idx].physical_start + table->entries[first_idx].size 
-        == table->entries[first_idx + 1].physical_start) &&
-        (table->entries[first_idx].type == table->entries[first_idx + 1].type)) {
-        table->entries[first_idx].size += table->entries[first_idx + 1].size;
-        table->entries[first_idx].attributes |= table->entries[first_idx + 1].attributes;
-        mmap_remove_entry(table, first_idx + 1);
+    for (int i = 0; i < (int)mmap_get_size(table) - 1; i++) {
+        if ((table->entries[i].physical_start + table->entries[i].size ==
+             table->entries[i + 1].physical_start) &&
+            (table->entries[i].type == table->entries[i + 1].type)) {
+                table->entries[i].size += table->entries[i + 1].size;
+                /* TODO: handle attributes */
+                mmap_remove_entry(table, i + 1);
+        }
     }
 }
 
@@ -92,7 +94,7 @@ static void fix_overlap(gd_memory_map_table *table,
 
 void mmap_remove_entry(gd_memory_map_table *table, size_t idx)
 {
-    for(size_t i = idx; i < (mmap_get_size(table) - 1); i++) {
+    for(int i = idx; i < ((int)mmap_get_size(table) - 1); i++) {
         memcpy(&table->entries[i], &table->entries[i + 1], sizeof (gd_memory_map_entry));
     }
     table->header.length -= sizeof (gd_memory_map_entry);
@@ -117,11 +119,11 @@ void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
 
     /* TODO: look after attributes. */
     if (idx) {
-        merge_adjacent(table, idx - 1);
         fix_overlap(table, idx - 1);
     }
     if (idx < (mmap_get_size(table) - 1)) {
-        merge_adjacent(table, idx);
         fix_overlap(table, idx);
     }
+
+    merge_adjacent(table);
 }

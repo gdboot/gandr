@@ -53,6 +53,5 @@ struct address_range {
 #define MMAP_MAX_ENTRIES      512
 
 void mmap_init();
-void mmap_display();
 
 #endif

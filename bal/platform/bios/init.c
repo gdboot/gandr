@@ -17,6 +17,7 @@
 #include <_PDCLIB_io.h>
 #include <bal/bios_services.h>
 #include <bal/bios_console.h>
+#include <gd_common.h>
 #include <bal/mmap.h>
 
 struct bios_console_dev bios_console;
@@ -36,6 +37,12 @@ void __start(struct bios_service_table *pbios_services)
     bios_console_init(&bios_console);
     stdout->handle.pointer = &bios_console.dev;
 
-    mmap_init(); mmap_display();
+    mmap_init(); extern gd_memory_map_table *mmap;
+    for (size_t i = 0; i < mmap_get_size(mmap); i++) {
+        printf("Entry %d: %llx -> %llx, %d\n", i, mmap->entries[i].physical_start,
+               mmap->entries[i].physical_start + mmap->entries[i].size,
+               mmap->entries[i].type);
+    }
+
     for(;;);
 }

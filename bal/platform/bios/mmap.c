@@ -16,8 +16,8 @@
 #include <gd_common.h>
 #include <bal/bios_services.h>
 #include <bal/mmap.h>
+#include <bal/portio.h>
 #include <stdbool.h>
-#include <stdio.h>
 
 /*! Type conversion from ACPI to gd* types. */
 gd_memory_type acpi_to_gd[] = {
@@ -51,7 +51,9 @@ static void add_acpi_range(struct address_range range)
     entry.physical_start = range.physical_start;
     entry.virtual_start = 0;
     entry.size = range.size;
-    entry.attributes = range.attributes;
+
+    /* TODO: handle attributes. */
+    entry.attributes = 0;
 
     if (range.type < (sizeof acpi_to_gd / sizeof (gd_memory_type)))
         entry.type = acpi_to_gd[range.type];
@@ -108,13 +110,122 @@ static bool try_e820()
     return true;
 }
 
-void mmap_display()
+/*! Returns true on success, otherwise false.
+ *      \param eax is the exact 0xe8X1 function.
+ */
+static bool try_e8x1(uint32_t eax)
 {
-    for (size_t i = 0; i < mmap_get_size(mmap); i++) {
-        printf("Entry %d: %llx -> %llx, %d\n", i, mmap->entries[i].physical_start,
-               mmap->entries[i].physical_start + mmap->entries[i].size,
-               mmap->entries[i].type);
+    struct bios_registers regs = { .eax = eax };
+    bios_int_call(0x15, &regs);
+    if (regs.eflags & carry_flag)
+        return false;
+
+    if (eax == 0xE801) {
+        regs.eax &= 0xFFFF;
+        regs.ebx &= 0xFFFF;
+        regs.ecx &= 0xFFFF;
+        regs.edx &= 0xFFFF;
     }
+
+    /*! Linux uses the CX/DX pair, but reverts to AX/BX if they're
+     *  zero. */
+    if (!regs.ecx) {
+        regs.ecx = regs.eax;
+        regs.edx = regs.ebx;
+    }
+
+    gd_memory_map_entry entries[] = {
+        { .physical_start = 0x100000,
+          .size = regs.ecx * 1024,
+          .type = gd_conventional_memory },
+
+        { .physical_start = 0x1000000,
+          .size = regs.edx * 1024 * 64,   /* 64K blocks */
+          .type = gd_conventional_memory }
+    };
+
+    mmap_add_entry(mmap, entries[0]);
+    mmap_add_entry(mmap, entries[1]);
+    return true;
+}
+
+static bool try_c7()
+{
+    // Use 0xC0 to figure out if 0xC7 is supported.
+    struct bios_registers regs = { .eax = 0xC0 };
+    bios_int_call(0x15, &regs);
+
+    if ((regs.eflags & carry_flag) || (regs.eax & 0xFF00))
+        return false;
+
+    uint8_t *rom_table = (uint8_t*)((regs.es * 0x10) + (regs.ebx & 0xFFFF));
+
+    // Bit 4 of second feature byte at offset 6.
+    if (!(rom_table[6] & (1 << 4)))
+        return false;
+
+    struct {
+        uint16_t word;
+        uint32_t local_memory_1m, local_memory_16m;
+        uint32_t system_memory_1m, system_memory_16m;
+        uint32_t cacheable_memory_1m, cacheable_memory_16m;
+        uint32_t memory_1m, memory_16m;
+        uint16_t free_block_c0000; uint16_t free_block_size;
+        uint32_t reserved;
+    } __attribute__((packed)) *c7_memory_map;
+
+    c7_memory_map = (void*)((regs.ds * 0x10) + (regs.esi & 0xFFFF));
+    gd_memory_map_entry entries[] = {
+        { .physical_start = 0x100000,
+          .size = c7_memory_map->memory_1m * 1024,
+          .type = gd_conventional_memory },
+
+        { .physical_start = 0x1000000,
+          .size = c7_memory_map->memory_16m * 1024,
+          .type = gd_conventional_memory }
+    };
+    mmap_add_entry(mmap, entries[0]);
+    mmap_add_entry(mmap, entries[1]);
+    return true;
+}
+
+static uint64_t get_extended_memory()
+{
+    struct bios_registers regs = { .eax = 0xDA88 };
+    bios_int_call(0x15, &regs);
+
+    if (!(regs.eflags & carry_flag)) {
+        /* success */
+        return (((regs.ecx & 0xFF) << 16) | (regs.ebx & 0xFFFF)) * 1024;
+    }
+
+    regs.eax = 0x8800;
+    bios_int_call(0x15, &regs);
+
+    /* AH=0x88 isn't reliable with carry flag setting,
+       so if AH is either 0x86 (unsupported function) or 0x80
+       (invalid command) after call, treat as error. */
+    if (!(regs.eflags & carry_flag) &&
+        ((regs.eax & 0xFF00) != 0x8600) &&
+        ((regs.eax & 0xFF00) != 0x8000)) {
+        return (regs.eax & 0xFFFF) * 1024;
+    }
+
+    regs.eax = 0x8A00;
+    bios_int_call(0x15, &regs);
+
+    if (!(regs.eflags & carry_flag)) {
+        return (((regs.edx & 0xFFFF) << 16) | (regs.eax & 0xFFFF)) * 1024;
+    }
+
+    // CMOS also stores information.
+    uint8_t low, high;
+    outb(0x70, 0x30);
+    low = inb(0x71);
+    outb(0x70, 0x31);
+    high = inb(0x71);
+
+    return (low | (high << 8)) * 1024;
 }
 
 void mmap_init()
@@ -122,7 +233,42 @@ void mmap_init()
     mmap->header.id = GD_MEMORY_MAP_TABLE_ID;
     mmap->header.length = sizeof (gd_table);
 
-    if (!try_e820()) {
+    if (try_e820() == false) {
         /* fallback */
+        struct bios_registers regs = { 0 };
+        bios_int_call(0x12, &regs);
+
+        gd_memory_map_entry entries[] = {
+            { .physical_start = 0x00000000,
+              .size = regs.eax * 1024,
+              .type = gd_conventional_memory },
+
+            // ISA hole.
+            { .physical_start = 0xF00000,
+              .size = 0x100000,
+              .type = gd_unusable_memory }
+        };
+        for (size_t i = 0; i < sizeof entries / sizeof (gd_memory_map_entry); i++)
+            mmap_add_entry(mmap, entries[i]);
+
+        if((try_e8x1(0xe881) == false) &&
+           (try_e8x1(0xe801) == false) &&
+           (try_c7() == false)) {
+            gd_memory_map_entry entry = {
+                .physical_start = 0x100000,
+                .size = get_extended_memory(),
+                .type = gd_conventional_memory
+            };
+
+            mmap_add_entry(mmap, entry);
+        }
     }
+
+    /* todo: pxe */
+    gd_memory_map_entry low_mem = {
+        .physical_start = 0x0000,
+        .size = 0x0600,           /* BDA lasts till 0x501. */
+        .type = gd_unusable_memory
+    };
+    mmap_add_entry(mmap, low_mem);
 }
