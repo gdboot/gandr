@@ -4,6 +4,7 @@ GdBalSources
     init.c
     bios_console.c
     bios_services.c
+    mmap.c
 	;
 
 SubIncludeOnce GD_TOP bal platform bios stage1 ;

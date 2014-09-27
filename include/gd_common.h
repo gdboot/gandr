@@ -42,7 +42,7 @@ typedef struct {
 
     /*! Length of the table, in bytes, including this header */
     uint32_t length;
-} gd_table;
+} __attribute__((packed)) gd_table;
 
 #define GD_TABLE_ID(a, b, c, d) \
     ((uint32_t) ((a << 24) | (b << 16) | (c << 8) | (d)))
@@ -114,15 +114,21 @@ typedef struct {
      *  \see gd_memory_map_attribute
      */
     uint64_t attributes;
-} gd_memory_map_entry;
+} __attribute__((packed)) gd_memory_map_entry;
 
 /*! System memory map
  */
 typedef struct {
     gd_table header;
     gd_memory_map_entry entries[];
-} gd_memory_map_table;
+} __attribute__((packed)) gd_memory_map_table;
 #define GD_MEMORY_MAP_TABLE_ID GD_TABLE_ID('M', 'M', 'A', 'P')
+
+inline size_t mmap_get_size(gd_memory_map_table *table);
+inline size_t mmap_get_size(gd_memory_map_table *table)
+{
+    return (table->header.length - sizeof (gd_table)) / sizeof (gd_memory_map_entry);
+}
 
 void mmap_remove_entry(gd_memory_map_table *table, size_t idx);
 void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry);

@@ -92,8 +92,7 @@ static void fix_overlap(gd_memory_map_table *table,
 
 void mmap_remove_entry(gd_memory_map_table *table, size_t idx)
 {
-    for(size_t i = idx;
-        i < ((table->header.length - sizeof (gd_table))/sizeof (gd_memory_map_entry) - 1); i++) {
+    for(size_t i = idx; i < (mmap_get_size(table) - 1); i++) {
         memcpy(&table->entries[i], &table->entries[i + 1], sizeof (gd_memory_map_entry));
     }
     table->header.length -= sizeof (gd_memory_map_entry);
@@ -105,8 +104,7 @@ void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
         return;
 
     size_t idx;
-    for (idx = (table->header.length - sizeof (gd_table))/sizeof (gd_memory_map_entry);
-         idx > 0; idx--) {
+    for (idx = mmap_get_size(table); idx > 0; idx--) {
         // Sort in increasing order.
         if (table->entries[idx - 1].physical_start <= entry.physical_start)
             break;
@@ -122,7 +120,7 @@ void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
         merge_adjacent(table, idx - 1);
         fix_overlap(table, idx - 1);
     }
-    if (idx < ((table->header.length - sizeof (gd_table))/sizeof (gd_memory_map_entry) - 1)) {
+    if (idx < (mmap_get_size(table) - 1)) {
         merge_adjacent(table, idx);
         fix_overlap(table, idx);
     }

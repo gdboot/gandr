@@ -17,6 +17,7 @@
 #include <_PDCLIB_io.h>
 #include <bal/bios_services.h>
 #include <bal/bios_console.h>
+#include <bal/mmap.h>
 
 struct bios_console_dev bios_console;
 
@@ -35,6 +36,6 @@ void __start(struct bios_service_table *pbios_services)
     bios_console_init(&bios_console);
     stdout->handle.pointer = &bios_console.dev;
 
-    printf("Hello, world!\n");
+    mmap_init(); mmap_display();
     for(;;);
 }

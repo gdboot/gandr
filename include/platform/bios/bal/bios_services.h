@@ -45,8 +45,19 @@ struct bios_registers {
     uint32_t ecx;
     uint32_t eax;
     uint32_t eflags;
-
 };
+
+typedef enum {
+    carry_flag = (1 << 0),
+    parity_flag = (1 << 2),
+    adjust_flag = (1 << 4),
+    zero_flag = (1 << 6),
+    sign_flag = (1 << 7),
+    trap_flag = (1 << 8),
+    interrupt_enable_flag = (1 << 9),
+    direction_flag = (1 << 10),
+    overflow_flag = (1 << 11)
+} eflags;
 
 struct bios_service_table {
     uint32_t magic;         //!< 'BIOS'
