@@ -124,13 +124,55 @@ typedef struct {
 } __attribute__((packed)) gd_memory_map_table;
 #define GD_MEMORY_MAP_TABLE_ID GD_TABLE_ID('M', 'M', 'A', 'P')
 
-inline size_t mmap_get_size(gd_memory_map_table *table);
-inline size_t mmap_get_size(gd_memory_map_table *table)
+static inline size_t mmap_get_size(gd_memory_map_table *table)
 {
     return (table->header.length - sizeof (gd_table)) / sizeof (gd_memory_map_entry);
 }
 
 void mmap_remove_entry(gd_memory_map_table *table, size_t idx);
 void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry);
+
+/*! ACPI Root System Description Table Pointer.
+ *
+ *  On ACPI systems, Gandr will retrieve the RSDT Pointer from the system
+ *  firmware and place it in this table.
+ *
+ *  These addresses are always physical addresses (??? even EFI)
+ */
+typedef struct {
+    gd_table header;
+    /*! If the system is ACPI 2.0 or later compliant, the system XSDT address
+     *  will be placed here. Otherwise, this will be zero */
+    uint64_t xsdt_address;
+    /*! The ACPI 1.0 RSDT address will be placed here */
+    uint32_t rsdt_address;
+} __attribute__((packed)) gd_rsdt_pointer_table;
+#define GD_RSDT_POINTER_TABLE_ID GD_TABLE_ID('R', 'S', 'D', 'T')
+
+typedef struct {
+    uint8_t signature[4];
+    uint32_t mp_config_table;
+    uint8_t length;
+    uint8_t version;
+    uint8_t checksum;
+    uint8_t feature_bytes[5];
+} __attribute__((packed)) mpfp_structure;
+
+/*! Pointers to description tables common to IBM-PC compatibles.
+ *
+ *  This table does not point to tables that are common to other platforms.
+ */
+typedef struct {
+    gd_table header;
+
+    /*! The MultiProcessor Floating Point structure. The structure can
+        be present in system base memory, so if it is found, it is copied
+        here. All fields null if not found. */
+    mpfp_structure mpfp;
+
+    /*! Pointer to the SMBIOS entry point table. Zero if not found. */
+    uint32_t smbios_entry_point_address;
+} __attribute__((packed)) gd_pc_pointer_table;
+#define GD_PC_POINTER_TABLE_ID GD_TABLE_ID('P', 'C', 'T', 'B')
 
 #endif

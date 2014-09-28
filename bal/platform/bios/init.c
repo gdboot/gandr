@@ -19,6 +19,7 @@
 #include <bal/bios_console.h>
 #include <gd_common.h>
 #include <bal/mmap.h>
+#include <bal/tables.h>
 
 struct bios_console_dev bios_console;
 
@@ -37,12 +38,29 @@ void __start(struct bios_service_table *pbios_services)
     bios_console_init(&bios_console);
     stdout->handle.pointer = &bios_console.dev;
 
-    mmap_init(); extern gd_memory_map_table *mmap;
+    /* Initialize the memory map, find all the tables. */
+    mmap_init();
+    tables_init();
+
+    extern gd_memory_map_table *mmap;
     for (size_t i = 0; i < mmap_get_size(mmap); i++) {
         printf("Entry %d: %llx -> %llx, %d\n", i, mmap->entries[i].physical_start,
                mmap->entries[i].physical_start + mmap->entries[i].size,
                mmap->entries[i].type);
     }
 
+    extern gd_rsdt_pointer_table rsdt_pointer;
+    extern gd_pc_pointer_table pc_pointer;
+
+    if (rsdt_pointer.header.length) {
+        printf("RSDT: %x\nXSDT: %llx\n", rsdt_pointer.rsdt_address, rsdt_pointer.xsdt_address);
+    }
+
+    if (pc_pointer.header.length) {
+        printf("MPS: %c%c%c%c\nSMBIOS: %x\n", pc_pointer.mpfp.signature[0],
+                                              pc_pointer.mpfp.signature[1],
+                                              pc_pointer.mpfp.signature[2],
+                                              pc_pointer.mpfp.signature[3], pc_pointer.smbios_entry_point_address);
+    }
     for(;;);
 }

@@ -228,6 +228,19 @@ static uint64_t get_extended_memory()
     return (low | (high << 8)) * 1024;
 }
 
+/*! Get the amount of base memory, as reported by int 0x12. */
+uint32_t get_base_memory()
+{
+    static uint32_t base_memory = 0;
+    if (!base_memory) {
+        struct bios_registers regs = { 0 };
+        bios_int_call(0x12, &regs);
+        base_memory = regs.eax * 1024;
+    }
+
+    return base_memory;
+}
+
 void mmap_init()
 {
     mmap->header.id = GD_MEMORY_MAP_TABLE_ID;
@@ -235,13 +248,10 @@ void mmap_init()
 
     if (try_e820() == false) {
         /* fallback */
-        struct bios_registers regs = { 0 };
-        bios_int_call(0x12, &regs);
-
         /* todo: does this need entries for EBDA or BIOS region? */
         gd_memory_map_entry entries[] = {
             { .physical_start = 0x00000000,
-              .size = regs.eax * 1024,
+              .size = get_base_memory(),
               .type = gd_conventional_memory },
 
             // ISA hole.

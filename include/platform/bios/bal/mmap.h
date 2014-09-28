@@ -52,6 +52,9 @@ struct address_range {
 #define MMAP_RESERVED_SPACE   0x30000
 #define MMAP_MAX_ENTRIES      512
 
+/*! Get the amount of base memory, as reported by int 0x12. */
+uint32_t get_base_memory();
+
 void mmap_init();
 
 #endif
