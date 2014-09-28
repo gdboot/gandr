@@ -33,12 +33,12 @@ static uint8_t checksum_table(const uint8_t *table, size_t length)
 static void search_region(const uint8_t *region, size_t length, bool rsdp_search, 
                           bool mpfp_search, bool smbios_search)
 {
-    if (rsdp_search == false &&
-        mpfp_search == false &&
-        smbios_search == false)
-        return;
-
     for (size_t i = 0; i < length; region += 16, i += 16) {
+        if (rsdp_search == false &&
+            mpfp_search == false &&
+            smbios_search == false)
+            return;
+
         if (rsdp_search == true &&
             TABLE_SIGNATURE(region[0], region[1], region[2], region[3]) == RSDP_SIGNATURE_LOW &&
             TABLE_SIGNATURE(region[4], region[5], region[6], region[7]) == RSDP_SIGNATURE_HIGH &&
@@ -51,6 +51,7 @@ static void search_region(const uint8_t *region, size_t length, bool rsdp_search
                 checksum_table(region, rsdp->length) == 0) {
                 rsdt_pointer.xsdt_address = rsdp->xsdt_address;
             }
+            rsdp_search = false;
         }
 
         if (mpfp_search == true &&
@@ -61,6 +62,7 @@ static void search_region(const uint8_t *region, size_t length, bool rsdp_search
             /* Only copy till as much space as we reserve. */
             memcpy(&pc_pointer.mpfp, region, ((mpfp_structure *) region)->length * 0x10 > sizeof (mpfp_structure) ?
                                              sizeof (mpfp_structure) : ((mpfp_structure *) region)->length * 0x10);
+            mpfp_search = false;
         }
 
         if (smbios_search == true &&
@@ -69,6 +71,7 @@ static void search_region(const uint8_t *region, size_t length, bool rsdp_search
 
             pc_pointer.header.length = sizeof pc_pointer;
             pc_pointer.smbios_entry_point_address = (uint32_t) region;
+            smbios_search = false;
         }
     }
 }
