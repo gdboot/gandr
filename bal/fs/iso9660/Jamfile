@@ -1,0 +1,4 @@
+SubDir GD_TOP bal fs iso9660 ;
+
+SubDirHdrs $(LIB9660_TOP) ;
+GdBalSources iso9660.c ;

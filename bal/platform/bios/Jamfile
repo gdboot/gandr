@@ -9,3 +9,4 @@ GdBalSources
 	;
 
 SubIncludeOnce GD_TOP bal platform bios stage1 ;
+SubIncludeOnce GD_TOP bal fs iso9660 ;
