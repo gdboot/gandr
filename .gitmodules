@@ -1,0 +1,3 @@
+[submodule "lib/lib9660"]
+	path = lib/lib9660
+	url = https://github.com/gdboot/lib9660.git
