@@ -1,3 +1,4 @@
 SubDir GD_TOP ;
 SubInclude PDCLIB_TOP ;
+SubIncludeOnce GD_TOP lib ;
 SubIncludeOnce GD_TOP bal ;
