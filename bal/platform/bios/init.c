@@ -25,7 +25,12 @@ struct bios_console_dev bios_console;
 
 __asm__(
 ".globl _start\n"
-"_start: push %edi\n"
+"_start:\n"
+#ifdef __x86_64__
+"        mov %edi, %edi\n"
+#else
+"        push %edi\n"
+#endif
 "        call __start\n"
 "        jmp .\n"
 );

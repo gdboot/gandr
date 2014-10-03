@@ -74,8 +74,8 @@ static bool try_e820()
     };
    volatile struct address_range range = { .attributes = entry_present };
 
-    regs.es = ((uint32_t)&range & 0xFFFF0) >> 4;
-    regs.edi = ((uint32_t)&range & 0x000F);
+    regs.es = ((uintptr_t) &range & 0xFFFF0) >> 4;
+    regs.edi = ((uintptr_t) &range & 0x000F);
     bios_int_call(0x15, &regs);
 
     // Carry flag after first call means unsupported.
@@ -88,8 +88,8 @@ static bool try_e820()
 
     do {
         regs.eax = 0x0000E820; regs.ecx = 24; regs.edx = 0x534D4150;
-        regs.es = ((uint32_t)&range & 0xFFFF0) >> 4;
-        regs.edi = ((uint32_t)&range & 0x000F);
+        regs.es = ((uintptr_t) &range & 0xFFFF0) >> 4;
+        regs.edi = ((uintptr_t) &range & 0x000F);
 
         range.attributes = entry_present;
         bios_int_call(0x15, &regs);
@@ -158,7 +158,7 @@ static bool try_c7()
     if ((regs.eflags & carry_flag) || (regs.eax & 0xFF00))
         return false;
 
-    uint8_t *rom_table = (uint8_t*)((regs.es * 0x10) + (regs.ebx & 0xFFFF));
+    uint8_t *rom_table = (uint8_t*)(uintptr_t) (regs.es * 0x10 + (regs.ebx & 0xFFFF));
 
     // Bit 4 of second feature byte at offset 6.
     if (!(rom_table[6] & (1 << 4)))
@@ -174,7 +174,7 @@ static bool try_c7()
         uint32_t reserved;
     } __attribute__((packed)) *c7_memory_map;
 
-    c7_memory_map = (void*)((regs.ds * 0x10) + (regs.esi & 0xFFFF));
+    c7_memory_map = (void*)(uintptr_t) (regs.ds * 0x10 + (regs.esi & 0xFFFF));
     gd_memory_map_entry entries[] = {
         { .physical_start = 0x100000,
           .size = c7_memory_map->memory_1m * 1024,

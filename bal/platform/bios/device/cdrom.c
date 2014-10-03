@@ -38,16 +38,16 @@ static int pread(cdrom_dev *dev, void *buf, size_t nbytes, size_t *nbytesread, u
     lba_packet.size = sizeof lba_packet;
     lba_packet.reserved = 0;
     lba_packet.blocks = (nbytes / 2048) > 0x7F ? 0x7F : nbytes / 2048;
-    lba_packet.buffer_off = (uint32_t) buf & 0x000F;
-    lba_packet.buffer_seg = ((uint32_t) buf & 0xFFFF0) >> 4;
+    lba_packet.buffer_off = (uintptr_t) buf & 0x000F;
+    lba_packet.buffer_seg = ((uintptr_t) buf & 0xFFFF0) >> 4;
     lba_packet.lba = offset / 2048;
 
     struct bios_registers regs = {
         .eax = 0x4200,
         .edx = dev->drive_number
     };
-    regs.ds = ((uint32_t) &lba_packet & 0xFFFF0) >> 4;
-    regs.edi = (uint32_t) &lba_packet & 0x000F;
+    regs.ds = ((uintptr_t) &lba_packet & 0xFFFF0) >> 4;
+    regs.edi = (uintptr_t) &lba_packet & 0x000F;
     bios_int_call(0x13, &regs);
 
     if (regs.eflags & carry_flag || !lba_packet.blocks) {
