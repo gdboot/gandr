@@ -70,7 +70,7 @@ static void search_region(const uint8_t *region, size_t length, bool rsdp_search
             checksum_table(region, ((struct smbios_entry_point *) region)->length) == 0) {
 
             pc_pointer.header.length = sizeof pc_pointer;
-            pc_pointer.smbios_entry_point_address = (uint32_t) region;
+            pc_pointer.smbios_entry_point_address = (uintptr_t) region;
             smbios_search = false;
         }
     }
@@ -94,8 +94,8 @@ void tables_init()
      */
 
     /* The BDA is supposed to contain a pointer to the EBDA. */
-    uint32_t ebda = *((uint16_t*) 0x40E) << 4;
-    uint32_t base_memory = get_base_memory();
+    uintptr_t ebda = *((uint16_t*) 0x40E) << 4;
+    uintptr_t base_memory = get_base_memory();
 
     if (ebda && ebda > base_memory && ebda < 0xA0000) {
         search_region((uint8_t*) ebda, 1024, true, true, false);

@@ -15,39 +15,50 @@
 
 #include <device/cdrom.h>
 #include <bal/bios_services.h>
+#include <string.h>
 #include <errno.h>
 
 static volatile struct {
     uint8_t size;
     uint8_t reserved;
     uint32_t blocks;
-    uint16_t buffer_off, buffer_seg;
+    uint16_t buffer_far_ptr;
     uint64_t lba;
 } __attribute__((packed)) lba_packet;
 
 static int pread(cdrom_dev *dev, void *buf, size_t nbytes, size_t *nbytesread, uint64_t offset)
 {
-    *nbytesread = 0;
+    *nbytesread = 0; void *read_buffer = buf;
 
-    if ((uintptr_t) buf > (0x10000 - 2048))
+    if (offset % 2048)
         return EINVAL;
 
-    if (nbytes % 2048 || offset % 2048)
-        return EINVAL;
+    if (!(nbytes &= ~0x7FF))
+        return 0;
+
+    /* 0xFFFF:0xFFFF = 0x10FFEF */
+    if ((uintptr_t) buf > (0x10FFF0 - 2048)) {
+        read_buffer = scratch_buffer;
+        nbytes = nbytes > sizeof scratch_buffer ?
+                 sizeof scratch_buffer & ~0x7FF : nbytes;
+    } else {
+        nbytes = nbytes > (0x10FFF0 - (uintptr_t) buf) ?
+                 (0x10FFF0 - (uintptr_t) buf) & ~0x7FF :
+                 nbytes;
+    }
 
     lba_packet.size = sizeof lba_packet;
     lba_packet.reserved = 0;
     lba_packet.blocks = (nbytes / 2048) > 0x7F ? 0x7F : nbytes / 2048;
-    lba_packet.buffer_off = (uintptr_t) buf & 0x000F;
-    lba_packet.buffer_seg = ((uintptr_t) buf & 0xFFFF0) >> 4;
+    lba_packet.buffer_far_ptr = rm_far_from_ptr(read_buffer);
     lba_packet.lba = offset / 2048;
 
     struct bios_registers regs = {
         .eax = 0x4200,
         .edx = dev->drive_number
     };
-    regs.ds = ((uintptr_t) &lba_packet & 0xFFFF0) >> 4;
-    regs.edi = (uintptr_t) &lba_packet & 0x000F;
+    regs.ds = rm_seg_from_ptr((void*) &lba_packet);
+    regs.edi = rm_offset_from_ptr((void*) &lba_packet);
     bios_int_call(0x13, &regs);
 
     if (regs.eflags & carry_flag || !lba_packet.blocks) {
@@ -55,6 +66,9 @@ static int pread(cdrom_dev *dev, void *buf, size_t nbytes, size_t *nbytesread, u
             return pread(dev, buf, 2048, nbytesread, offset);
         else return EIO;
     }
+
+    if (read_buffer != buf)
+        memcpy(buf, read_buffer, lba_packet.blocks * 2048);
 
     return *nbytesread = lba_packet.blocks * 2048, 0;
 }

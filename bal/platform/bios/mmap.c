@@ -74,8 +74,8 @@ static bool try_e820()
     };
    volatile struct address_range range = { .attributes = entry_present };
 
-    regs.es = ((uintptr_t) &range & 0xFFFF0) >> 4;
-    regs.edi = ((uintptr_t) &range & 0x000F);
+    regs.es = rm_seg_from_ptr((void*) &range);
+    regs.edi = rm_offset_from_ptr((void*) &range);
     bios_int_call(0x15, &regs);
 
     // Carry flag after first call means unsupported.
@@ -88,8 +88,8 @@ static bool try_e820()
 
     do {
         regs.eax = 0x0000E820; regs.ecx = 24; regs.edx = 0x534D4150;
-        regs.es = ((uintptr_t) &range & 0xFFFF0) >> 4;
-        regs.edi = ((uintptr_t) &range & 0x000F);
+        regs.es = rm_seg_from_ptr((void*) &range);
+        regs.edi = rm_offset_from_ptr((void*) &range);
 
         range.attributes = entry_present;
         bios_int_call(0x15, &regs);
