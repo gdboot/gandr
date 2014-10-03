@@ -279,7 +279,8 @@ void mmap_init()
     /* todo: self */
     gd_memory_map_entry low_mem = {
         .physical_start = 0x0000,
-        .size = 0x0600,           /* BDA lasts till 0x501. */
+        /*! IVT and BDA (till 0x501). */
+        .size = 0x1000,
         .type = gd_unusable_memory
     };
     mmap_add_entry(mmap, low_mem);

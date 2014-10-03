@@ -105,6 +105,30 @@ void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
     if (!entry.size)
         return;
 
+    if (entry.physical_start & 0xFFF) {
+        gd_memory_map_entry unusable = {
+            .physical_start = entry.physical_start & ~0xFFF,
+            .size = 0x1000,
+            .type = gd_unusable_memory
+        };
+        mmap_add_entry(table, unusable);
+        if (entry.size > (0x1000 - (entry.physical_start & 0xFFF)))
+            entry.size -= 0x1000 - (entry.physical_start & 0xFFF);
+        else return;
+        entry.physical_start = unusable.physical_start + unusable.size;
+    }
+
+    if (entry.size & 0xFFF) {
+        gd_memory_map_entry unusable = {
+            .physical_start = (entry.physical_start + entry.size) & ~0xFFF,
+            .size = 0x1000,
+            .type = gd_unusable_memory
+        };
+        mmap_add_entry(table, unusable);
+        if (!(entry.size &= ~0xFFF))
+            return;
+    }
+
     size_t idx;
     for (idx = mmap_get_size(table); idx > 0; idx--) {
         // Sort in increasing order.
