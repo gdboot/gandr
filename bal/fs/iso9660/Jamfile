@@ -1,4 +1,6 @@
 SubDir GD_TOP bal fs iso9660 ;
 
 SubDirHdrs $(LIB9660_TOP) ;
+SubDirCcFlags [ FDefines L9660_HAVE_STDIO ] ;
+
 GdBalSources iso9660.c ;

@@ -1,3 +1,5 @@
 SubDir GD_TOP lib ;
 
+LIB9660_OPTS = [ FDefines L9660_HAVE_STDIO ] ;
+
 SubIncludeOnce GD_TOP lib lib9660 ;

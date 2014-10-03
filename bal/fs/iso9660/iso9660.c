@@ -39,12 +39,31 @@ static int file_read(iso9660_file *f, void * buf, size_t nbytes, size_t * nbytes
     return translate_status(l9660_read(&f->impl, buf, nbytes, nbytesread));
 }
 
+static int file_pread(
+    iso9660_file *f,
+    void * buf,
+    size_t nbytes,
+    size_t * nbytesread,
+    uint64_t offset)
+{
+    uint32_t old_offset = l9660_tell(&f->impl);
+    l9660_status stat = l9660_read(&f->impl, buf, nbytes, nbytesread);
+    l9660_status seek_stat = l9660_seek(&f->impl, SEEK_SET, old_offset);
+
+    return translate_status(stat ? stat : seek_stat);
+}
+
 static int file_seek(iso9660_file *f, int64_t offset, int whence, int64_t * new_offset)
 {
+    if (offset > UINT32_MAX)
+        return EINVAL;
+
     int rv = translate_status(l9660_seek(&f->impl, whence, offset));
+
     *new_offset = l9660_tell(&f->impl);
     return rv;
 }
+
 static int file_close(iso9660_file *f)
 {
     free(f);
@@ -53,6 +72,7 @@ static int file_close(iso9660_file *f)
 
 GD_BEGIN_IOCTL_MAP(iso9660_file *, file_ioctl)
     GD_MAP_READ_IOCTL(file_read)
+    GD_MAP_PREAD_IOCTL(file_pread)
     GD_MAP_SEEK_IOCTL(file_seek)
     GD_MAP_CLOSE_IOCTL(file_close)
 GD_END_IOCTL_MAP()
@@ -104,5 +124,5 @@ int iso9660fs_init(iso9660_fs *self, gd_device_t blockdev)
     self->dev.ioctl = fs_ioctl;
     self->blockdev  = blockdev;
 
-    translate_status(l9660_openfs(&self->impl, read_sector));
+    return translate_status(l9660_openfs(&self->impl, read_sector));
 }
