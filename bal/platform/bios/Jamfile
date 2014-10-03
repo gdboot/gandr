@@ -6,6 +6,7 @@ GdBalSources
     bios_services.c
     mmap.c
     tables.c
+    device/cdrom.c
 	;
 
 SubIncludeOnce GD_TOP bal platform bios stage1 ;
