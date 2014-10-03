@@ -21,8 +21,8 @@
 static volatile struct {
     uint8_t size;
     uint8_t reserved;
-    uint32_t blocks;
-    uint16_t buffer_far_ptr;
+    uint16_t blocks;
+    uint32_t buffer_far_ptr;
     uint64_t lba;
 } __attribute__((packed)) lba_packet;
 
