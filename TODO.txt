@@ -1,5 +1,14 @@
-=== TODO ===
+# TODO
 
-    * Find requisite tables.
-    * Add boot device handling code.
-    * Add open/read/close for supported filesystems.
+    0.1:
+    * Gather boot device information in stage1.
+    * Fix _PDCLib_allocpages.
+        -> only allocate in low mem (?)
+        -> add related type in memory map
+    * Add proper abort in BAL.
+    * Add support for "PXE" as boot device in BAL.
+    * Gather necessary VBE and EDID information.
+    * Support serial as fallback in case no VGA compatible device present.
+    * Add mode switching support.
+    * Add fbcon driver.
+    * ELF loading.
