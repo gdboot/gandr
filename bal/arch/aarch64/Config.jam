@@ -1,0 +1,4 @@
+GdIncludeDir $(GD_TOP) include arch aarch64 ;
+
+TOOLPREFIX = aarch64-elf- ;
+
