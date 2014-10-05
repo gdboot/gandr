@@ -1,0 +1,25 @@
+SubDir GD_TOP bal platform atf kickstart ;
+SubDirHdrs $(ELFLOAD_TOP) ;
+
+rule AtfKickstart {
+    local objs = ;
+
+    for src in [ FGristFiles $(>) ] {
+        local obj = $(src:S=$(SUFOBJ)) ;
+        Object $(obj) : $(src) ;
+        MakeLocate $(obj) : $(LOCATE_TARGET) ;
+        objs += $(obj) ;
+    }
+
+    LinkWithScript $(<).elf : $(objs) :  [ FDirName $(GD_TOP) bal platform atf kickstart kickstart.ld ] ;
+    LinkLibraries $(<).elf  : elfload $(PDCLIB) ;
+    ObjCopy $(<) : $(<).elf : -O binary ;
+    DEPENDS exe : $(<) ;
+}
+
+AtfKickstart bl33.bin :
+    entry.S
+    kickstart.c
+    pl011.c
+    io_semihosting.c
+    ;

@@ -1,0 +1,12 @@
+GdIncludeDir $(GD_TOP) bal platform atf ;
+
+SUPPORTED_ARCHITECTURES =
+    aarch64
+    ;
+
+
+# Generic DeviceTree based support for ARM Trusted Firmware based platforms
+
+rule GdBalBinaries {
+
+}
