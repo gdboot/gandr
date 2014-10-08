@@ -1,0 +1,3 @@
+SubDir GD_TOP bal device uart arm_pl011 ;
+
+GdBalSources arm_pl011.c ;
