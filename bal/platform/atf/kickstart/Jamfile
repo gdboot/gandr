@@ -12,7 +12,7 @@ rule AtfKickstart {
     }
 
     LinkWithScript $(<).elf : $(objs) :  [ FDirName $(GD_TOP) bal platform atf kickstart kickstart.ld ] ;
-    LinkLibraries $(<).elf  : elfload $(PDCLIB) ;
+    LinkLibraries $(<).elf  : elfload $(PDCLIB) libgdioctl ;
     ObjCopy $(<) : $(<).elf : -O binary ;
     DEPENDS exe : $(<) ;
 }

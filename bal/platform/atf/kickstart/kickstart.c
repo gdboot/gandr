@@ -31,9 +31,8 @@ static void align(uintptr_t *v, size_t align)
 
 static void fail(const char *reason)
 {
-    putsn(ESC_BOLD);
-    puts(reason);
-    puts(ESC_NORMAL "Kickstart failed. Halted.");
+    printf(ESC_BOLD "%s\n" ESC_NORMAL "Kickstart failed. Halted.\n", reason);
+
     for(;;);
 }
 
@@ -41,21 +40,19 @@ void ks_main(void)
 {
     puts("Gandr ATF Kickstart!");
 
-    register unsigned magic   __asm("w0") = DT_GANDR_ATFKICKSTART_VERSION;
-    register unsigned version __asm("w1") = 0;
-    register void *dtb_addr   __asm("x2") = ks_load_dtb();
+    unsigned magic   = DT_GANDR_ATFKICKSTART_VERSION;
+    unsigned version = 0;
+    void *dtb_addr   = ks_load_dtb();
     void *entrypoint = ks_load_bal();
 
-    __asm volatile("b %[entrypoint]"
-        :: [magic]      "r" (magic)
-         , [version]    "r" (version)
-         , [dtb]        "r" (dtb_addr)
-         , [entrypoint] "r" (entrypoint));
+    printf("Preparing to go to %p (dtb=%p)\n", entrypoint, dtb_addr);
+
+    ks_go(magic, version, dtb_addr, entrypoint);
 }
 
 void *ks_load_dtb(void)
 {
-    putsn("Loading DTB...");
+    printf("Loading DTB...");
     int fd = io_open("platform.dtb");
     if (fd == -1) fail(" platform.dtb not found");
 
@@ -65,7 +62,7 @@ void *ks_load_dtb(void)
     mem_mark += dtb_size;
 
     for(unsigned i = 0; i < dtb_size; i += 1024) {
-        putc('.');
+        uputc('.');
         unsigned to_read = (i + 1024) < dtb_size ? 1024 : dtb_size - i;
         int rv = io_read(fd, dtbstart + i, to_read);
         if (rv != (int) to_read)
@@ -74,7 +71,7 @@ void *ks_load_dtb(void)
 
     io_close(fd);
 
-    puts(ESC_BOLD " Done" ESC_NORMAL);
+    printf(ESC_BOLD " Done\n" ESC_NORMAL);
 
     return dtbstart;
 }
@@ -87,20 +84,30 @@ typedef struct {
 
 static bool ks_pread(struct el_ctx *ctx, void *dest, size_t nb, size_t offset)
 {
+    int rv;
     ks_el_ctx *ksc = (ks_el_ctx*) ctx;
-    if (io_seek(ksc->fd, offset))
+    if ((rv = io_seek(ksc->fd, offset))) {
+        printf(" Seek failed (to 0x%X); %d", (unsigned) offset, rv);
         return false;
+    }
 
-    return io_read(ksc->fd, dest, nb) == (int) nb;
+    int read = io_read(ksc->fd, dest, nb);
+
+    if (read != (int) nb) {
+        printf(" Read failed (0x%X)", (unsigned) nb);
+        return false;
+    }
+
+    return true;
 }
 
 static void check_el(el_status res, const char *action)
 {
+    if (res == EL_OK) return;
+
     puts(ESC_BOLD " ELF loader error" ESC_NORMAL);
-    putsn("While ");
-    putsn(action);
-    putsn(": ");
-    switch(res) {
+    printf("While %s: ", action);
+    switch (res) {
         case EL_EIO:           fail("I/O error");
         case EL_ENOMEM:        fail("Out of memory");
         case EL_NOTELF:        fail("Not an ELF file");
@@ -111,7 +118,9 @@ static void check_el(el_status res, const char *action)
         case EL_NOTEXEC:       fail("Not executable");
         case EL_NODYN:         fail("Not dynamic");
         case EL_BADREL:        fail("Bad relocation");
-        default:               fail("Unknown");
+        default:
+            printf("(%d)", res);
+            fail("Unknown");
     }
 }
 
@@ -126,7 +135,7 @@ static void *ks_el_alloc(
 
 void *ks_load_bal(void)
 {
-    putsn("Loading Gandr BAL...");
+    printf("Loading Gandr BAL...");
 
     ks_el_ctx ctx;
     ctx.el.pread = ks_pread;
@@ -134,7 +143,11 @@ void *ks_load_bal(void)
     if (ctx.fd == -1)
         fail(" gd_atf64.elf not found");
 
+    int len = io_len(ctx.fd);
+    printf(" (%d bytes)", len);
+
     check_el(el_init(&ctx.el), "initialising");
+    printf( " init");
 
     Elf_Dyn dyn;
     check_el(el_finddyn(&ctx.el, &dyn, DT_GANDR_ATFKICKSTART_VERSION),
@@ -143,16 +156,22 @@ void *ks_load_bal(void)
     if (dyn.d_tag == 0)
         fail(" no ABI tag");
 
+printf( " abi");
+
     /* No need to check value - we only speak v0 */
 
     align(&mem_mark, ctx.el.align);
     ctx.el.base_load_paddr = ctx.el.base_load_vaddr = mem_mark;
 
     check_el(el_load(&ctx.el, ks_el_alloc), "loading");
+    printf( " loaded @ %p ", (void*) ctx.el.base_load_paddr);
 
     check_el(el_relocate(&ctx.el), "perfomring relocations");
+    printf( " reloc");
 
     io_close(ctx.fd);
+
+    puts(ESC_BOLD " done" ESC_NORMAL);
 
     return (void*) (ctx.el.ehdr.e_entry + mem_mark);
 }

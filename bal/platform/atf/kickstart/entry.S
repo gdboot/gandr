@@ -3,6 +3,7 @@
                 .section entrypoint
                 .global _start
                 .global shcall
+                .global ks_go
 
 .macro SetupEL ELX
                 // Little endian FTW
@@ -61,6 +62,10 @@ func shcall
                 hlt #0xF000
                 ret
 endfunc shcall
+
+func ks_go
+                br x3
+endfunc ks_go
 
                 .section stack
                 .balign 4096

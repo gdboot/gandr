@@ -44,9 +44,9 @@ enum semihost_call {
 int shcall(enum semihost_call, ...);
 
 /*! uart functions */
-void putc(char);
-void puts(const char*);
-void putsn(const char*);
+void uputc(char);
+int puts(const char*);
+int printf(const char* fmt, ...);
 
 /*! io functions */
 int         io_open(const char *name);
@@ -58,5 +58,6 @@ void        io_close(int fd);
 void ks_main(void);
 void *ks_load_dtb(void);
 void *ks_load_bal(void);
+void ks_go(int magic, int version, void *dtb, void *ep);
 
 #endif

@@ -1,4 +1,6 @@
+#include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
 #include "kickstart.h"
 
 enum reg {
@@ -36,7 +38,7 @@ enum flag_bits {
 
 extern volatile uint32_t pl011_regs[];
 
-void putc(char c)
+void uputc(char c)
 {
     if (c == '\n') {
         while(pl011_regs[UART_FR] & UART_FR_TXFF_BIT);
@@ -48,14 +50,27 @@ void putc(char c)
     pl011_regs[UART_DR] = (unsigned char) c;
 }
 
-void putsn(const char *str)
+int puts(const char *str)
 {
     while(*str)
-        putc(*str++);
+        uputc(*str++);
+    uputc('\n');
+    return 0;
 }
 
-void puts(const char *str)
+static size_t printfcb( void *p, const char *buf, size_t size )
 {
-    putsn(str);
-    putc('\n');
+    for (size_t i = 0; i < size; i++ )
+        uputc(buf[i]);
+    return size;
+}
+
+int printf(const char* fmt, ...)
+{
+    va_list ap;
+    va_start(ap, fmt);
+    int n = _vcbprintf(0, printfcb, fmt, ap);
+    va_end(ap);
+
+    return n;
 }
