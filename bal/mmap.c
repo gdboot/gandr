@@ -1,20 +1,52 @@
 /* Copyright © 2014, Shikhin Sethi
- * 
- * Permission to use, copy, modify, and/or distribute this software for any 
- * purpose with or without fee is hereby granted, provided that the above 
+ * Copyright © 2014, Owen Shepherd
+ *
+ * Permission to use, copy, modify, and/or distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
  * copyright notice appear in all copies.
  *
- * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH 
- * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY 
- * AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, 
- * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM 
- * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR 
- * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR 
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+ * REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+ * AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+ * INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+ * LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+ * OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
  * PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <gd_common.h>
+#include <bal/mmap.h>
+#include <gd_tree.h>
 #include <string.h>
+
+typedef struct mmap_entry {
+    RB_ENTRY(mmap_entry) rbnode;
+    gd_memory_map_entry  entry;
+} mmap_entry;
+
+static int mmap_entry_cmp(const mmap_entry *l, const mmap_entry *r)
+{
+    return l->entry.physical_start < r->entry.physical_start ? -1 :
+           l->entry.physical_start > r->entry.physical_start ? +1 : 0;
+}
+
+static RB_HEAD(mmap_tree, mmap_entry) mmap = RB_INITIALIZER(&mmap);
+RB_PROTOTYPE_STATIC(mmap_tree, mmap_entry, rbnode, mmap_entry_cmp)
+
+/* When we free mmap entries, we place them in a linked list built out of their
+ * ent->rbnode.rbe_left fields
+ */
+static mmap_entry *last_freed = NULL;
+
+/* We pre-allocate 32 mmap entries as empirically sufficient to hold a system
+ * memory map. If it isn't, then we will scavenge from that memory map (if you
+ * don't have any memory in the first 32 entries we find, WTF is with your
+ * system).
+ */
+static mmap_entry static_slots[32];
+static mmap_entry *alloc_next  = static_slots;
+static size_t      allocatable = 32;
+/* incremented each time we update the memory map */
+static size_t      mmap_key     = 0;
 
 static gd_memory_type overlap_precedence[] = {
     /*! The overlapping region is promoted to the one that comes earlier. */
@@ -24,12 +56,75 @@ static gd_memory_type overlap_precedence[] = {
     gd_boot_services_data, gd_conventional_memory, gd_reserved_memory_type
 };
 
+static mmap_entry *mmap_alloc(void)
+{
+    mmap_entry *mme = NULL;
+    if (last_freed) {
+        mme = last_freed;
+        last_freed = last_freed->rbnode.rbe_left;
+        return mme;
+    } else {
+        if (!allocatable) {
+            RB_FOREACH (mme, mmap_tree, &mmap) {
+                if (mme->entry.type == gd_conventional_memory) {
+                    mmap_entry *neighbour;
+                    if ((neighbour = RB_PREV(mmap_tree, &mmap, mme))
+                            && neighbour->entry.type == gd_loader_data) {
+                        // slice out first 4kiB
+
+                        alloc_next  = (mmap_entry*) mme->entry.physical_start;
+                        allocatable = 4096 / sizeof(*mme);
+
+                        neighbour->entry.size += 4096;
+                        mme->entry.size -= 4096;
+                        mme->entry.physical_start += 4096;
+                    } else if ((neighbour = RB_NEXT(mmap_tree, &mmap, mme))
+                            && neighbour->entry.type == gd_loader_data) {
+                        // slice out last 4kB
+                        neighbour->entry.size += 4096;
+                        neighbour->entry.physical_start -= 4096;
+                        mme->entry.size -= 4096;
+
+                        alloc_next  = (mmap_entry*) neighbour->entry.physical_start;
+                        allocatable = 4096 / sizeof(*mme);
+                    } else {
+                        // neither neigbour is appropriate
+                        alloc_next  = (mmap_entry*) mme->entry.physical_start;
+                        allocatable = 4096 / sizeof(*mme) - 1;
+                        alloc_next->entry.type = gd_loader_data;
+                        alloc_next->entry.physical_start = mme->entry.physical_start;
+                        alloc_next->entry.size = 4096;
+                        alloc_next->entry.attributes = 0;
+
+                        mme->entry.physical_start += 4096;
+                        mme->entry.size -= 4096;
+
+                        RB_INSERT(mmap_tree, &mmap, alloc_next);
+                        alloc_next += 1;
+                    }
+                    ++mmap_key;
+                    break;
+                }
+            }
+
+            if (!allocatable) {
+                // Didn't manage to grab any space. Panic!
+                panic("Out of memory");
+            }
+        }
+        mme = alloc_next;
+        alloc_next += 1;
+        allocatable--;
+        return mme;
+    }
+}
+
 /*! Returns the type with higher precedence. */
 static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
 {
     for (size_t i = 0; i < sizeof overlap_precedence/sizeof (gd_memory_type); i++)
     {
-        if (overlap_precedence[i] == a) 
+        if (overlap_precedence[i] == a)
             return a;
         else if (overlap_precedence[i] == b)
             return b;
@@ -39,68 +134,90 @@ static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
     return gd_unusable_memory;
 }
 
-static void merge_adjacent(gd_memory_map_table *table)
+static void merge_adjacent(mmap_entry *middle)
 {
-    for (int i = 0; i < (int)mmap_get_size(table) - 1; i++) {
-        if ((table->entries[i].physical_start + table->entries[i].size ==
-             table->entries[i + 1].physical_start) &&
-            (table->entries[i].type == table->entries[i + 1].type)) {
-                table->entries[i].size += table->entries[i + 1].size;
-                /* TODO: handle attributes */
-                mmap_remove_entry(table, i + 1);
-        }
+    mmap_entry *prev = RB_PREV(mmap_tree, &mmap, middle);
+    mmap_entry *next = RB_NEXT(mmap_tree, &mmap, middle);
+
+    if (prev->entry.type == middle->entry.type
+            && prev->entry.physical_start + prev->entry.size
+                == middle->entry.physical_start) {
+        prev->entry.size += middle->entry.size;
+        RB_REMOVE(mmap_tree, &mmap, middle);
+        ++mmap_key;
+        middle = prev;
+    }
+
+    if (middle->entry.type == next->entry.type
+            && middle->entry.physical_start + middle->entry.size
+                == next->entry.physical_start) {
+        middle->entry.size += next->entry.size;
+        RB_REMOVE(mmap_tree, &mmap, next);
+        ++mmap_key;
     }
 }
 
-static void fix_overlap(gd_memory_map_table *table,
-                        size_t first_idx)
+/* Fixes overlap bewteen \p first and the following node */
+static void fix_overlap(mmap_entry *first)
 {
-    gd_memory_map_entry *first = &table->entries[first_idx];
-    gd_memory_map_entry *second = &table->entries[first_idx + 1];
+    if (!first) return;
+    mmap_entry *second = RB_NEXT(mmap_tree, &mmap, first);
+    mmap_entry *new_entry = NULL;
+    if (!second) return;
 
-    if ((first->physical_start + first->size) <= second->physical_start)
+    if ((first->entry.physical_start + first->entry.size)
+            <= second->entry.physical_start)
         return;
 
-    gd_memory_map_entry new_entry;
+    gd_memory_type type = higher_precedence(first->entry.type, second->entry.type);
+    uint64_t first_physical_end = first->entry.physical_start + first->entry.size;
+    uint64_t second_physical_end = second->entry.physical_start + second->entry.size;
 
-    // Partition in three, where the new_entry is the right-most part.
-    uint64_t first_physical_end = first->physical_start + first->size;
-    uint64_t second_physical_end = second->physical_start + second->size;
     if (first_physical_end < second_physical_end) {
-        new_entry.physical_start = first_physical_end;
-        new_entry.size = second_physical_end - first_physical_end;
-        new_entry.type = second->type; new_entry.attributes = second->attributes;
+        // Partition
+        type = higher_precedence(first->entry.type, second->entry.type);
+
+        if (type == first->entry.type) {
+            second->entry.size = second_physical_end - first_physical_end;
+            second->entry.physical_start = second_physical_end - second->entry.size;
+            return;
+        } else if (type == second->entry.type) {
+            first->entry.size = first->entry.physical_start - second->entry.physical_start;
+            return;
+        }
+
+        new_entry = mmap_alloc();
+        new_entry->entry.physical_start = first_physical_end;
+        new_entry->entry.size = second_physical_end - first_physical_end;
+        new_entry->entry.type = type;
+        new_entry->entry.attributes = second->entry.attributes;
+    } else if (first_physical_end > second_physical_end) {
+        // Second entry is a subset
+
+        if (type == first->entry.type)
+            return;
+
+        new_entry = mmap_alloc();
+        new_entry->entry.physical_start = second_physical_end;
+        new_entry->entry.size = first_physical_end - second_physical_end;
+        new_entry->entry.type = first->entry.type;
+        new_entry->entry.attributes = first->entry.attributes;
     } else {
-        new_entry.physical_start = second_physical_end;
-        new_entry.size = first_physical_end - second_physical_end;
-        new_entry.type = first->type; new_entry.attributes = first->attributes;
+        // Second entry is end of first
+        first->entry.size = second_physical_end - second->entry.size;
+        second->entry.type = type;
+        return;
     }
 
-    first->size = second->physical_start - first->physical_start;
-    second->size = new_entry.physical_start - second->physical_start;
-    /* TODO: handle attributes. */
-    second->attributes = first->attributes | second->attributes;
-    second->type = higher_precedence(first->type, second->type);
+    first->entry.size = second->entry.physical_start - first->entry.physical_start;
+    second->entry.size = new_entry->entry.physical_start - second->entry.physical_start;
+    second->entry.attributes = first->entry.attributes | second->entry.attributes;
+    second->entry.type = type;
 
-    if (!second->size) {
-        mmap_remove_entry(table, first_idx + 1);
-    }
-    if (!first->size) {
-        mmap_remove_entry(table, first_idx);
-    }
-
-    mmap_add_entry(table, new_entry);
+    RB_INSERT(mmap_tree, &mmap, new_entry);
 }
 
-void mmap_remove_entry(gd_memory_map_table *table, size_t idx)
-{
-    for(int i = idx; i < ((int)mmap_get_size(table) - 1); i++) {
-        memcpy(&table->entries[i], &table->entries[i + 1], sizeof (gd_memory_map_entry));
-    }
-    table->header.length -= sizeof (gd_memory_map_entry);
-}
-
-void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
+void mmap_add_entry(gd_memory_map_entry entry)
 {
     if (!entry.size)
         return;
@@ -111,7 +228,7 @@ void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
             .size = 0x1000,
             .type = gd_unusable_memory
         };
-        mmap_add_entry(table, unusable);
+        mmap_add_entry(unusable);
         if (entry.size > (0x1000 - (entry.physical_start & 0xFFF)))
             entry.size -= 0x1000 - (entry.physical_start & 0xFFF);
         else return;
@@ -124,30 +241,37 @@ void mmap_add_entry(gd_memory_map_table *table, gd_memory_map_entry entry)
             .size = 0x1000,
             .type = gd_unusable_memory
         };
-        mmap_add_entry(table, unusable);
+        mmap_add_entry(unusable);
         if (!(entry.size &= ~0xFFF))
             return;
     }
 
-    size_t idx;
-    for (idx = mmap_get_size(table); idx > 0; idx--) {
-        // Sort in increasing order.
-        if (table->entries[idx - 1].physical_start <= entry.physical_start)
-            break;
+    mmap_entry *newent = mmap_alloc();
+    memcpy(&newent->entry, &entry, sizeof entry);
+    RB_INSERT(mmap_tree, &mmap, newent);
 
-        memcpy(&table->entries[idx], &table->entries[idx - 1], sizeof (gd_memory_map_entry));
-    }
-
-    table->header.length += sizeof (gd_memory_map_entry);
-    memcpy(&table->entries[idx], &entry, sizeof (gd_memory_map_entry));
-
-    /* TODO: look after attributes. */
-    if (idx) {
-        fix_overlap(table, idx - 1);
-    }
-    if (idx < (mmap_get_size(table) - 1)) {
-        fix_overlap(table, idx);
-    }
-
-    merge_adjacent(table);
+    fix_overlap(RB_PREV(mmap_tree, &mmap, newent));
+    fix_overlap(newent);
+    merge_adjacent(newent);
+    ++mmap_key;
 }
+
+void mmap_get(
+    gd_memory_map_entry *tab,
+    size_t nentries,
+    size_t *needed,
+    size_t *key)
+{
+    size_t i = 0;
+    mmap_entry *ent;
+    RB_FOREACH (ent, mmap_tree, &mmap) {
+        if (i < nentries) {
+            memcpy(&tab[i], &ent->entry, sizeof *tab);
+        }
+        i++;
+    }
+    *needed = i;
+    *key = mmap_key;
+}
+
+RB_GENERATE_STATIC(mmap_tree, mmap_entry, rbnode, mmap_entry_cmp);
