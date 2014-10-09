@@ -4,3 +4,6 @@
 [submodule "lib/elfload"]
 	path = lib/elfload
 	url = https://github.com/gdboot/elfload.git
+[submodule "lib/libfdt/dtc"]
+	path = lib/libfdt/dtc
+	url = git://git.kernel.org/pub/scm/utils/dtc/dtc.git

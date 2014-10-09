@@ -4,3 +4,4 @@ LIB9660_OPTS = [ FDefines L9660_HAVE_STDIO ] ;
 
 SubIncludeOnce GD_TOP lib lib9660 ;
 SubIncludeOnce GD_TOP lib elfload ;
+SubIncludeOnce GD_TOP lib libfdt  ;

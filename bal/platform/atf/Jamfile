@@ -1,3 +1,9 @@
 SubDir GD_TOP bal platform atf ;
 
+GdBalSources
+    entry.S
+    main.c
+    ;
+
 SubIncludeOnce GD_TOP bal platform atf kickstart ;
+SubIncludeOnce GD_TOP bal device uart arm_pl011 ;

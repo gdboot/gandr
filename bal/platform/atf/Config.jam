@@ -8,5 +8,10 @@ SUPPORTED_ARCHITECTURES =
 # Generic DeviceTree based support for ARM Trusted Firmware based platforms
 
 rule GdBalBinaries {
+    local name = gd_atf64.elf ;
+    local script = [ FDirName $(GD_TOP) bal platform atf bal.ld ] ;
 
+    LinkWithScript $(name) : $(GD_BAL_OBJECTS) : $(script) : -pie ;
+    LinkLibraries  $(name) : libfdt.a $(PDCLIB) libgdioctl.a $(LIBGCC) ;
+    Depends exe : $(name) ;
 }

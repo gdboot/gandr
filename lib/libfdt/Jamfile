@@ -1,0 +1,16 @@
+SubDir LIBFDT_TOP ;
+GdIncludeDir $(LIBFDT_TOP) dtc libfdt ;
+SubDir LIBFDT_TOP ;
+
+SubDirCcFlags -Wno-pedantic -Wno-sign-compare ;
+
+Library libfdt :
+    dtc/libfdt/fdt.c
+    dtc/libfdt/fdt_addresses.c
+    dtc/libfdt/fdt_empty_tree.c
+    dtc/libfdt/fdt_ro.c
+    dtc/libfdt/fdt_rw.c
+    dtc/libfdt/fdt_strerror.c
+    dtc/libfdt/fdt_sw.c
+    dtc/libfdt/fdt_wip.c
+    ;
