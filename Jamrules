@@ -67,7 +67,7 @@ rule GdBalSources {
 }
 
 
-# Add an include dir (Config.jam) 
+# Add an include dir (Config.jam)
 # GdIncludeDir $(GD_TOP) dir dir dir ;
 rule GdIncludeDir {
     GD_INCLUDE_DIRS += [ FDirName $(1) ] ;
@@ -115,13 +115,13 @@ actions ObjCopy {
 }
 
 # Link using a linker script
-# LinkWithScript output : objects : script ;
+# LinkWithScript output : objects : script [: extraflags] ;
 rule LinkWithScript {
     # Can't use MainFromObjects as it regrists the files
     Depends $(<) : $(>) $(3) ;
     MakeLocate $(<) : $(LOCATE_TARGET) ;
     Clean clean : $(<) ;
-    LINKFLAGS on $(<) += -T$(3) ;
+    LINKFLAGS on $(<) += -T$(3) $(4) ;
 }
 
 # We also generate output useful for debugging
@@ -197,8 +197,8 @@ if ! $(ARCH) {
 
 # All of our toolchains are GCC-alikes
 TOOLSET = gcc ;
-CCFLAGS  += -ffreestanding -g ;
-C++FLAGS += -ffreestanding -g ;
+CCFLAGS  += -ffreestanding -g -fPIC ;
+C++FLAGS += -ffreestanding -g -fPIC ;
 
 AS         = $(TOOLPREFIX)gcc ;
 AR         = $(TOOLPREFIX)ar cru ;
@@ -225,7 +225,7 @@ LIBGCC = [ COMMAND $(CC) $(CCFLAGS) $(OPTIM) $(CCDEFS) -print-libgcc-file-name ]
 SubRules GD_TOP pdclib : PDCLIB_TOP ;
 
 
-# JamBase invokes all rules specified in SUBDIRRULES when a new subdir is 
+# JamBase invokes all rules specified in SUBDIRRULES when a new subdir is
 # entered
 #
 # We deferred adding these till here else _AddHeaders gets invoked by the above
@@ -249,7 +249,7 @@ rule MakeLocate
             local _rev = [ FReverse $(>) ] ;
             if $(_rev[1]) = "." {
               _rev = $(_rev[2-]) ;
-            } 
+            }
             local _dir = [ FDirName [ FReverse $(_rev) ] $(file:D) ] ;
 
             LOCATE on $(file) = [ FDirName $(>) ] ;
