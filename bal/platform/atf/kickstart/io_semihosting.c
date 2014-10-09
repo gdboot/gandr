@@ -26,7 +26,7 @@ int         io_seek(int fd, unsigned offset)
     uintptr_t params[2];
     params[0] = fd;
     params[1] = offset;
-    return shcall(SH_SEEK, params);
+    return !(shcall(SH_SEEK, params) == offset);
 }
 
 int         io_read(int fd, void *buf, unsigned len)
