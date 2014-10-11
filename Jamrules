@@ -73,30 +73,57 @@ rule GdIncludeDir {
     GD_INCLUDE_DIRS += [ FDirName $(1) ] ;
 }
 
-GD_IOCTL_GEN = [ FDirName $(GD_TOP) tools gd_ioctl_gen ] ;
+GD_STUB_GEN = [ FDirName $(GD_TOP) tools gd_stub_gen ] ;
 # Parse the ioctl definition
 # GdIoctls lib : <source> ;
 rule GdIoctls {
-    local files = [ COMMAND $(GD_IOCTL_GEN) $(>) -stubdir ioctl_stubs -list ] ;
+    local files = [ COMMAND $(GD_STUB_GEN) ioctl $(>) -stubdir ioctl_stubs -list ] ;
     files = [ FGristFiles $(files) ] ;
-    ECHO Files are $(files) ;
+    ECHO ioctl files are $(files) ;
 
-    GdIoctlGen $(files) : $(>) : include/gd_ioctl.inc : ioctl_stubs ;
-    Library $(<) : $(files) ioctl_stubs/gd_ioctl_stub.c ;
+    GdIoctlGen $(files) : $(>) : include/gd_ioctl.h : include/gd_ioctl_map.h : ioctl_stubs ;
+    Library $(<) : $(files) ioctl_stubs/gd_ioctl_stub.S ;
 }
 
 # Internal
-# GdIoctlGen $(stubs) : $(input) : $(hdr) : $(dir) ;
+# GdIoctlGen $(< stubs) : $(> input) : $(3 hdr) : $(4 map) $(5 dir) ;
 rule GdIoctlGen {
     ECHO $(<) from $(>) ;
-    DEPENDS $(<) $(3) : $(>) $(GD_IOCTL_GEN) ;
-    MakeLocate $(<) $(3) $(4) : $(LOCATE_TARGET) ;
-    DIR on $(<) = [ FDirName $(LOCATE_TARGET) $(4) ] ;
+    MakeLocate $(<) $(3) $(4) $(5) : $(LOCATE_TARGET) ;
+    DEPENDS $(<) (3) $(4) $(5) : $(>) $(GD_STUB_GEN) ;
+    DIR on $(<) = [ FDirName $(LOCATE_TARGET) $(5) ] ;
+    MAP on $(<) = [ FDirName $(LOCATE_TARGET) $(4) ] ;
     HDR on $(<) = [ FDirName $(LOCATE_TARGET) $(3) ] ;
 }
 
 actions GdIoctlGen {
-    $(GD_IOCTL_GEN) $(>) -stubdir $(DIR) -stub -hdr $(HDR)
+    $(GD_STUB_GEN) ioctl $(>) -stubdir $(DIR) -stubs -hdr $(HDR) -map $(MAP)
+}
+
+# Parse the syscall definition
+# GdIoctls lib : <source> ;
+rule GdSyscalls {
+    local files = [ COMMAND $(GD_STUB_GEN) syscall $(>) -stubdir syscall_stubs -list ] ;
+    files = [ FGristFiles $(files) ] ;
+    ECHO syscall files are $(files) ;
+
+    GdSyscallGen $(files) : $(>) : include/gd_syscall.h : gd_syscall.c : syscall_stubs ;
+    Library $(<) : $(files) syscall_stubs/gd_syscall_stub.S ;
+}
+
+# Internal
+# GdSyscallGen $(< stubs) : $(> input) : $(3 hdr) : $(4 dispatcher) $(5 dir) ;
+rule GdSyscallGen {
+    ECHO $(<) from $(>) ;
+    MakeLocate $(<) $(3) $(4) $(5) : $(LOCATE_TARGET) ;
+    DEPENDS $(<) $(3) $(3:D=) $(4) $(5) : $(>) $(GD_STUB_GEN) ;
+    DIR  on $(<) = [ FDirName $(LOCATE_TARGET) $(5) ] ;
+    DISP on $(<) = [ FDirName $(LOCATE_TARGET) $(4) ] ;
+    HDR  on $(<) = [ FDirName $(LOCATE_TARGET) $(3) ] ;
+}
+
+actions GdSyscallGen {
+    $(GD_STUB_GEN) syscall $(>) -stubdir $(DIR) -stubs -hdr $(HDR) -dispatcher $(DISP)
 }
 
 ################################################################################

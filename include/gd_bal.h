@@ -31,10 +31,13 @@ typedef struct gd_device {
     int (*ioctl)(struct gd_device *, unsigned, ...);
 } *gd_device_t;
 
+int (*gd_syscall_p)(unsigned, ...);
 int gd_ioctl(gd_device_t, unsigned, ...);
+int gd_syscall(unsigned, ...);
 
-#include "gd_ioctl.inc"
-
+#include "gd_syscall.h"
+#include "gd_ioctl.h"
+#include "gd_ioctl_map.h"
 #define GD_BEGIN_IOCTL_MAP(_type, _name)                                       \
 static int _name(gd_device_t dev_, unsigned ioctl, ...)     \
 {                                                                              \

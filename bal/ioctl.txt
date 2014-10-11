@@ -1,49 +1,31 @@
-forward
-    unsigned                        : num
-    va_list                         : ap
+at 0x00000000
+ioctl forward(unsigned num, va_list ap)
+ioctl openat(gd_device_t *p_fd, const char *name)
+ioctl read(void *buf, size_t nbytes, size_t *nbytesread)
+ioctl write(const void *buf, size_t nbytes, size_t *nbyteswritten)
+ioctl seek(int64_t offset, int whence, int64_t *new_offset)
+ioctl pread(void *buf, size_t nbytes, size_t *nbytesread, uint64_t offset)
+ioctl pwrite(const void *buf, size_t nbytes, size_t *nbyteswritten, uint64_t offset)
+ioctl close()
 
-openat
-    gd_device_t *                   : p_fd
-    const char *                    : name
+// Device ioctls
+at 0x00010000
+ioctl device_get_name(char *buf, size_t szBuf, size_t *szNeeded)
+ioctl device_get_path(char *buf, size_t szBuf, size_t *szNeeded)
 
-read
-    void *                          : buf
-    size_t                          : nbytes
-    size_t *                        : nbytesread
+// FDT ioctls
+at 0x00010100
+struct fdt_device_description
+ioctl device_get_fdt_description(struct fdt_device_description *descr)
 
-write
-    const void *                    : buf
-    size_t                          : nbytes
-    size_t *                        : nbyteswritten
+// Device type specific ioctls
+// UART ioctls
+at 0x00020100
+struct gd_uart_config
+ioctl uart_get_config(struct gd_uart_config *config)
+ioctl uart_set_config(const struct gd_uart_config *config)
 
-seek
-    int64_t                         : offset
-    int                             : whence
-    int64_t *                       : new_offset
-
-pread
-    void *                          : buf
-    size_t                          : nbytes
-    size_t *                        : nbytesread
-    uint64_t                        : offset
-
-pwrite
-    const void *                    : buf
-    size_t                          : nbytes
-    size_t *                        : nbyteswritten
-    uint64_t                        : offset
-
-close
-
-
-uart_get_config; struct gd_uart_config
-    struct gd_uart_config *         : config
-
-uart_set_config
-    const struct gd_uart_config *   : config
-
-i2c_start
-    uint16_t                        : address
-    bool                            : writing
-
-i2c_stop
+// I2C ioctls
+at 0x00020200
+ioctl i2c_start(uint16_t address, bool writing)
+ioctl i2c_stop()

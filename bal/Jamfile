@@ -1,12 +1,14 @@
 SubDir GD_TOP bal ;
 
+GdIoctls   libgdioctl.a   : [ FDirName $(GD_TOP) bal ioctl.txt   ] ;
+GdSyscalls libgdsyscall.a : [ FDirName $(GD_TOP) bal syscall.txt ] ;
+
 GdBalSources
     gio.c
     mmap.c
     panic.c
     ;
 
-GdIoctls libgdioctl.a : [ FDirName $(GD_TOP) bal ioctl.txt ] ;
 
 # Include arch, soc, platform headers
 SubIncludeOnce GD_TOP bal arch $(ARCH) ;

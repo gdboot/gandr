@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+# Copyright © 2013, 2014 Owen Shepherd
+#
+# Permission to use, copy, modify, and/or distribute this software for any
+# purpose with or without fee is hereby granted, provided that the above
+# copyright notice appear in all copies.
+#
+# THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+# REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY
+# AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+# INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+# LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+# OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+# PERFORMANCE OF THIS SOFTWARE.
+
+import argparse
+import re
+import sys
+
+class Function:
+    def __init__(self, num, name, params):
+        self.num    = num
+        self.name   = name
+        self.params = params
+
+    def stubname(self, stubdir):
+        if not stubdir:
+            stubdir = ''
+        elif not stubdir.endswith('/'):
+            stubdir += '/'
+        return "%s%s.c" % (stubdir, self.name)
+
+
+patterns = {}
+def match(regex):
+    regex = re.compile('^%s$' % regex)
+    def _(fn):
+        patterns[regex] = fn
+        return fn
+    return _
+
+class Parser:
+
+    def __init__(self, mode):
+        self.mode       = mode
+        self.line       = 1
+        self.ctl_num    = 0
+        self.line       = 0
+        self.functions  = []
+        self.predefined = []
+        self.errors     = 0
+
+    def error(self, str):
+        print("Line %d: %s" % (self.line, str))
+        self.errors += 1
+
+    @match(r'\s*')
+    def whitespace(self):
+        pass
+
+    @match(r'//.*')
+    def comment(self):
+        pass
+
+    param_re = re.compile('^\s*(\w+(?:\s+\w+)*\s*(?:\s+|(?:\*\s*)+))(\w+)\s*$')
+    @match(r'(\w+)\s+(\w+)\(([^)]*)\)\s*')
+    def function(self, mode, name, paramstr):
+        if self.mode != mode:
+            return self.error('Bad "%s% declaration' % mode)
+
+        params = []
+        paramstr = paramstr.strip()
+        if len(paramstr) and paramstr != "void":
+            for p in paramstr.split(','):
+                m = self.param_re.match(p)
+                if m:
+                    (type_, name_) = m.groups()
+                    params.append((type_, name_))
+                else:
+                    return self.error("Bad parameter declaration \"%s\"" % p)
+        self.functions.append(Function(self.ctl_num, name, params))
+        self.ctl_num += 1
+
+    @match(r'at\s+(0x[0-9a-fA-F]{8})\s*')
+    def at(self, id):
+        self.ctl_num = int(id, base=16)
+
+    @match(r'((?:struct|union|enum)\s+\w+)\s*')
+    def predef(self, def_):
+        self.predefined.append(def_)
+
+    def process_line(self, line):
+        for regex, func in patterns.items():
+            m = regex.match(line)
+            if m:
+                return func(self, *m.groups())
+        return self.error("Bad line '%s'" % line)
+
+    def parse_file(self, file):
+        for line in options.file:
+            self.line += 1
+            self.process_line(line.strip())
+        if self.errors:
+            print("Failing after %d errors" % self.errors)
+            sys.exit(1)
+
+    def list_stubs(self, stubdir):
+        for func in self.functions:
+            print(func.stubname(stubdir))
+
+    @property
+    def TYPE(self):
+        return self.mode.upper()
+
+    @property
+    def selfparam(self):
+        if self.mode == 'ioctl':
+            return 'gd_device_t dev_'
+        else:
+            return ''
+
+    def make_header(self, file):
+        for func in self.functions:
+            file.write('#define GD_%s_%s %d\n' %
+                (func.name.upper(), self.TYPE, func.num))
+        for line in self.predefined:
+            file.write('%s;\n' % line)
+        for func in self.functions:
+            file.write('int gd_%s(%s' % (func.name, self.selfparam))
+            if self.mode == 'ioctl' and len(func.params):
+                file.write(', ')
+            file.write(', '.join('%s %s' % p for p in func.params))
+            file.write(');\n')
+
+    def make_stubs(self, dir):
+        for func in self.functions:
+            file = open(func.stubname(dir), 'w')
+            file.write("#include <gd_bal.h>\n\n")
+
+            file.write('int gd_%s(%s' % (func.name, self.selfparam))
+            if self.mode == 'ioctl' and len(func.params):
+                file.write(', ')
+            file.write(', '.join('%s %s' % p for p in func.params))
+            file.write(')\n{\n')
+
+            if self.mode == 'ioctl':
+                file.write('    return dev_->ioctl(dev_, ')
+            else:
+                file.write('    return (*gd_syscall_p)(')
+            file.write('GD_%s_%s' % (func.name.upper(), self.TYPE))
+            if len(func.params):
+                file.write(', ')
+            file.write(', '.join(p[1] for p in func.params))
+            file.write(');\n')
+            file.write('}\n')
+            file.close()
+
+    def make_map(self, file):
+        for func in self.functions:
+            file.write('#define GD_MAP_%s_IOCTL(_name) \\\n' % func.name.upper())
+            file.write('    case GD_%s_IOCTL: {\\\n' % func.name.upper())
+            for i in range(0, len(func.params)):
+                file.write('        %s _arg%d = va_arg(*pap, %s);\\\n' %
+                    (func.params[i][0], i, func.params[i][0]))
+            file.write('        rv = _name(dev')
+            if len(func.params):
+                file.write(', ')
+            file.write(', '.join('_arg%d' % i for i in range(0, len(func.params))))
+            file.write(');\\\n')
+            file.write('        break;\\\n')
+            file.write('    }\n\n')
+
+    def make_dispatcher(self, file):
+        file.write("#include <stdarg.h>\n")
+        file.write("#include <gd_bal.h>\n\n")
+        file.write("int gd_syscall(unsigned syscall, ...)\n")
+        file.write("{\n")
+        file.write("    va_list ap;\n")
+        file.write("    va_start(ap, syscall);\n")
+        file.write("    switch (syscall) {\n")
+        for func in self.functions:
+            file.write("        case GD_%s_SYSCALL: {\n " % func.name.upper())
+            for i in range(0, len(func.params)):
+                file.write('            %s _arg%d = va_arg(ap, %s);\\\n' %
+                    (func.params[i][0], i, func.params[i][0]))
+            file.write("        return gd_%s(")
+            file.write(', '.join('_arg%d' % i for i in range(0, len(func.params))))
+            file.write(");\n")
+            file.write("        }\n")
+        file.write("    }\n")
+        file.write("}\n")
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Generate ioctl/syscall stubs and headers')
+
+    parser.add_argument("mode",        choices=['ioctl', 'syscall'])
+    parser.add_argument("file",        type=argparse.FileType('r'))
+    parser.add_argument("-list",       action='store_true')
+    parser.add_argument("-stubs",      action='store_true')
+    parser.add_argument("-stubdir",    type=str)
+    parser.add_argument("-hdr",        type=argparse.FileType('w'))
+    parser.add_argument("-map",        type=argparse.FileType('w'))
+    parser.add_argument("-dispatcher", type=argparse.FileType('w'))
+    options = parser.parse_args()
+
+    parse = Parser(options.mode)
+    parse.parse_file(options.file)
+
+    if options.list:
+        parse.list_stubs(options.stubdir)
+
+    if options.hdr:
+        parse.make_header(options.hdr)
+
+    if options.stubs:
+        parse.make_stubs(options.stubdir)
+
+    if options.map:
+        if options.mode != 'ioctl':
+            print('map option only makes sense for ioctl')
+            sys.exit(1)
+        parse.make_map(options.map)
+
+    if options.dispatcher:
+        if options.mode != 'syscall':
+            print('dispatcher option only makes sense for syscall')
+            sys.exit(1)
+        parse.make_dispatcher(options.dispatcher)
