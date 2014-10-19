@@ -20,6 +20,9 @@
 /*! Add an entry to the memory map */
 void mmap_add_entry(gd_memory_map_entry entry);
 
+/*! Empty the memory map */
+void mmap_clean(void);
+
 /*! Gets the memory map
  *
  * \param tab         destination table

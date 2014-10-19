@@ -15,6 +15,7 @@
  */
 
 #include <bal/mmap.h>
+#include <bal/misc.h>
 #include <gd_tree.h>
 #include <string.h>
 
@@ -42,9 +43,10 @@ static mmap_entry *last_freed = NULL;
  * don't have any memory in the first 32 entries we find, WTF is with your
  * system).
  */
-static mmap_entry static_slots[32];
+#define MMAP_STATIC_SLOTS 32
+static mmap_entry static_slots[MMAP_STATIC_SLOTS];
 static mmap_entry *alloc_next  = static_slots;
-static size_t      allocatable = 32;
+static size_t      allocatable = MMAP_STATIC_SLOTS;
 /* incremented each time we update the memory map */
 static size_t      mmap_key     = 0;
 
@@ -119,6 +121,13 @@ static mmap_entry *mmap_alloc(void)
     }
 }
 
+static void mmap_free(mmap_entry *ent)
+{
+    ent->rbnode.rbe_left  = last_freed;
+    ent->rbnode.rbe_right = ent->rbnode.rbe_parent = NULL;
+    last_freed = ent;
+}
+
 /*! Returns the type with higher precedence. */
 static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
 {
@@ -144,6 +153,7 @@ static void merge_adjacent(mmap_entry *middle)
                 == middle->entry.physical_start) {
         prev->entry.size += middle->entry.size;
         RB_REMOVE(mmap_tree, &mmap, middle);
+        mmap_free(middle);
         ++mmap_key;
         middle = prev;
     }
@@ -153,6 +163,7 @@ static void merge_adjacent(mmap_entry *middle)
                 == next->entry.physical_start) {
         middle->entry.size += next->entry.size;
         RB_REMOVE(mmap_tree, &mmap, next);
+        mmap_free(next);
         ++mmap_key;
     }
 }
@@ -256,6 +267,19 @@ void mmap_add_entry(gd_memory_map_entry entry)
     ++mmap_key;
 }
 
+void mmap_clean(void)
+{
+    mmap_entry *mme, *next;
+    for (mme = RB_MIN(mmap_tree, &mmap); mme; mme = next) {
+        next = RB_NEXT(mmap_tree, &mmap, mme);
+        RB_REMOVE(mmap_tree, &mmap, mme);
+    }
+
+    alloc_next  = static_slots;
+    allocatable = MMAP_STATIC_SLOTS;
+    last_freed  = NULL;
+}
+
 void mmap_get(
     gd_memory_map_entry *tab,
     size_t nentries,
@@ -274,4 +298,4 @@ void mmap_get(
     *key = mmap_key;
 }
 
-RB_GENERATE_STATIC(mmap_tree, mmap_entry, rbnode, mmap_entry_cmp);
+RB_GENERATE_STATIC(mmap_tree, mmap_entry, rbnode, mmap_entry_cmp)
