@@ -16,6 +16,7 @@
 #include <gd_common.h>
 #include <bal/bios_services.h>
 #include <bal/mmap.h>
+#include <platform/bios/bal/mmap.h>
 #include <bal/portio.h>
 #include <stdbool.h>
 
@@ -29,18 +30,6 @@ gd_memory_type acpi_to_gd[] = {
     gd_unusable_memory,      /* address_range_unusable */
     gd_unusable_memory       /* address_range_disabled */
 };
-
-gd_memory_map_table *mmap = (gd_memory_map_table*)MMAP_RESERVED_SPACE;
-
-/*! Adds entry to memory map after checking limits. */
-static void mmap_add_entry_wrapper(gd_memory_map_table *table,
-                                   gd_memory_map_entry entry)
-{
-    if (mmap_get_size(table) < MMAP_MAX_ENTRIES)
-        mmap_add_entry(table, entry);
-    else
-        for(;;);    /* TODO: error out */
-}
 
 static void add_acpi_range(struct address_range range)
 {
@@ -60,7 +49,7 @@ static void add_acpi_range(struct address_range range)
     else
         entry.type = gd_unusable_memory;
 
-    mmap_add_entry_wrapper(mmap, entry);
+    mmap_add_entry(entry);
 }
 
 /*! Returns true on success, otherwise false. */
@@ -100,7 +89,7 @@ static bool try_e820()
 
         // If invalid entry, reset.
         if ((regs.eax != 0x534D4150) || (regs.ecx < 20)) {
-            mmap->header.length = sizeof (gd_table);
+            mmap_clean();
             return false;
         }
 
@@ -144,8 +133,8 @@ static bool try_e8x1(uint32_t eax)
           .type = gd_conventional_memory }
     };
 
-    mmap_add_entry(mmap, entries[0]);
-    mmap_add_entry(mmap, entries[1]);
+    mmap_add_entry(entries[0]);
+    mmap_add_entry(entries[1]);
     return true;
 }
 
@@ -184,8 +173,8 @@ static bool try_c7()
           .size = c7_memory_map->memory_16m * 1024,
           .type = gd_conventional_memory }
     };
-    mmap_add_entry(mmap, entries[0]);
-    mmap_add_entry(mmap, entries[1]);
+    mmap_add_entry(entries[0]);
+    mmap_add_entry(entries[1]);
     return true;
 }
 
@@ -243,9 +232,6 @@ uint32_t get_base_memory()
 
 void mmap_init()
 {
-    mmap->header.id = GD_MEMORY_MAP_TABLE_ID;
-    mmap->header.length = sizeof (gd_table);
-
     if (try_e820() == false) {
         /* fallback */
         /* todo: does this need entries for EBDA or BIOS region? */
@@ -260,7 +246,7 @@ void mmap_init()
               .type = gd_unusable_memory }
         };
         for (size_t i = 0; i < sizeof entries / sizeof (gd_memory_map_entry); i++)
-            mmap_add_entry(mmap, entries[i]);
+            mmap_add_entry(entries[i]);
 
         if((try_e8x1(0xe881) == false) &&
            (try_e8x1(0xe801) == false) &&
@@ -271,7 +257,7 @@ void mmap_init()
                 .type = gd_conventional_memory
             };
 
-            mmap_add_entry(mmap, entry);
+            mmap_add_entry(entry);
         }
     }
 
@@ -283,5 +269,5 @@ void mmap_init()
         .size = 0x1000,
         .type = gd_unusable_memory
     };
-    mmap_add_entry(mmap, low_mem);
+    mmap_add_entry(low_mem);
 }

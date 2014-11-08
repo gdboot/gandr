@@ -19,6 +19,7 @@
 #include <bal/bios_console.h>
 #include <gd_common.h>
 #include <bal/mmap.h>
+#include <platform/bios/bal/mmap.h>
 #include <bal/tables.h>
 
 struct bios_console_dev bios_console;
@@ -47,12 +48,13 @@ void __start(struct bios_service_table *pbios_services)
     mmap_init();
     tables_init();
 
-    extern gd_memory_map_table *mmap;
-    for (size_t i = 0; i < mmap_get_size(mmap); i++) {
-        printf("Entry %d: %llx -> %llx, %d\n", i, mmap->entries[i].physical_start,
-               mmap->entries[i].physical_start + mmap->entries[i].size,
-               mmap->entries[i].type);
-    }
+    /*gd_memory_map_entry mmap[100]; size_t nentries = 100, key = 0;
+    mmap_get(&mmap, nentries, &nentries, &key);
+    for (size_t i = 0; i < nentries; i++) {
+        printf("Entry %d: %llx -> %llx, %d\n", i, mmap[i].physical_start,
+               mmap[i].physical_start + mmap[i].size,
+               mmap[i].type);
+    }*/
 
     extern gd_rsdt_pointer_table rsdt_pointer;
     extern gd_pc_pointer_table pc_pointer;
