@@ -68,30 +68,42 @@ static mmap_entry *mmap_alloc(void)
     } else {
         if (!allocatable) {
             RB_FOREACH (mme, mmap_tree, &mmap) {
+                if (mme->entry.physical_start > UINTPTR_MAX)
+                    break;
+
                 if (mme->entry.type == gd_conventional_memory) {
                     mmap_entry *neighbour;
                     if ((neighbour = RB_PREV(mmap_tree, &mmap, mme))
-                            && neighbour->entry.type == gd_loader_data) {
+                            && neighbour->entry.type == gd_loader_data
+                            && (neighbour->entry.physical_start + neighbour->entry.size)
+                                == mme->entry.physical_start) {
                         // slice out first 4kiB
 
-                        alloc_next  = (mmap_entry*) mme->entry.physical_start;
+                        alloc_next  = (mmap_entry*)(uintptr_t) mme->entry.physical_start;
                         allocatable = 4096 / sizeof(*mme);
 
                         neighbour->entry.size += 4096;
                         mme->entry.size -= 4096;
                         mme->entry.physical_start += 4096;
                     } else if ((neighbour = RB_NEXT(mmap_tree, &mmap, mme))
-                            && neighbour->entry.type == gd_loader_data) {
+                            && neighbour->entry.type == gd_loader_data
+                            && (mme->entry.physical_start + mme->entry.size)
+                                == neighbour->entry.physical_start) {
+
+                        if ((mme->entry.physical_start + mme->entry.size - 4096)
+                                > UINTPTR_MAX)
+                            break;
+
                         // slice out last 4kB
                         neighbour->entry.size += 4096;
                         neighbour->entry.physical_start -= 4096;
                         mme->entry.size -= 4096;
 
-                        alloc_next  = (mmap_entry*) neighbour->entry.physical_start;
+                        alloc_next  = (mmap_entry*)(uintptr_t) neighbour->entry.physical_start;
                         allocatable = 4096 / sizeof(*mme);
                     } else {
                         // neither neigbour is appropriate
-                        alloc_next  = (mmap_entry*) mme->entry.physical_start;
+                        alloc_next  = (mmap_entry*)(uintptr_t) mme->entry.physical_start;
                         allocatable = 4096 / sizeof(*mme) - 1;
                         alloc_next->entry.type = gd_loader_data;
                         alloc_next->entry.physical_start = mme->entry.physical_start;
