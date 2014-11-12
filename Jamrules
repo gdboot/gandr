@@ -81,7 +81,7 @@ rule GdIoctls {
     files = [ FGristFiles $(files) ] ;
     ECHO ioctl files are $(files) ;
 
-    GdIoctlGen $(files) : $(>) : include/gd_ioctl.h : include/gd_ioctl_map.h : ioctl_stubs ;
+    GdIoctlGen $(files) gd_ioctl.h : $(>) : include/gd_ioctl.h : include/gd_ioctl_map.h : ioctl_stubs ;
     Library $(<) : $(files) ioctl_stubs/gd_ioctl_stub.S ;
 }
 
@@ -107,12 +107,12 @@ rule GdSyscalls {
     files = [ FGristFiles $(files) ] ;
     ECHO syscall files are $(files) ;
 
-    GdSyscallGen $(files) : $(>) : include/gd_syscall.h : gd_syscall.c : syscall_stubs ;
+    GdSyscallGen $(files) gd_syscall.h gd_syscall.c : $(>) : include/gd_syscall.h : gd_syscall.c : syscall_stubs ;
     Library $(<) : $(files) syscall_stubs/gd_syscall_stub.S ;
 }
 
 # Internal
-# GdSyscallGen $(< stubs) : $(> input) : $(3 hdr) : $(4 dispatcher) $(5 dir) ;
+# GdSyscallGen $(< outputs) : $(> input) : $(3 hdr) : $(4 dispatcher) $(5 dir) ;
 rule GdSyscallGen {
     ECHO $(<) from $(>) ;
     MakeLocate $(<) $(3) $(4) $(5) : $(LOCATE_TARGET) ;
@@ -224,8 +224,8 @@ if ! $(ARCH) {
 
 # All of our toolchains are GCC-alikes
 TOOLSET = gcc ;
-CCFLAGS  += -ffreestanding -g -fPIC ;
-C++FLAGS += -ffreestanding -g -fPIC ;
+CCFLAGS  += -ffreestanding -g ;
+C++FLAGS += -ffreestanding -g ;
 
 AS         = $(TOOLPREFIX)gcc ;
 AR         = $(TOOLPREFIX)ar cru ;

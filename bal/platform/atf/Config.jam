@@ -4,6 +4,9 @@ SUPPORTED_ARCHITECTURES =
     aarch64
     ;
 
+CCFLAGS  += -fPIC ;
+C++FLAGS += -fPIC ;
+
 
 # Generic DeviceTree based support for ARM Trusted Firmware based platforms
 
