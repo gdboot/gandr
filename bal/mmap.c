@@ -160,7 +160,8 @@ static void merge_adjacent(mmap_entry *middle)
     mmap_entry *prev = RB_PREV(mmap_tree, &mmap, middle);
     mmap_entry *next = RB_NEXT(mmap_tree, &mmap, middle);
 
-    if (prev->entry.type == middle->entry.type
+    /* TODO: attributes */
+    if (prev && prev->entry.type == middle->entry.type
             && prev->entry.physical_start + prev->entry.size
                 == middle->entry.physical_start) {
         prev->entry.size += middle->entry.size;
@@ -170,7 +171,7 @@ static void merge_adjacent(mmap_entry *middle)
         middle = prev;
     }
 
-    if (middle->entry.type == next->entry.type
+    if (next && middle->entry.type == next->entry.type
             && middle->entry.physical_start + middle->entry.size
                 == next->entry.physical_start) {
         middle->entry.size += next->entry.size;
@@ -181,16 +182,17 @@ static void merge_adjacent(mmap_entry *middle)
 }
 
 /* Fixes overlap bewteen \p first and the following node */
-static void fix_overlap(mmap_entry *first)
+/* Returns non-zero value if removes first from mmap. */
+static int fix_overlap(mmap_entry *first)
 {
-    if (!first) return;
+    if (!first) return 0;
     mmap_entry *second = RB_NEXT(mmap_tree, &mmap, first);
     gd_memory_map_entry new_entry = { 0 };
-    if (!second) return;
+    if (!second) return 0;
 
     if ((first->entry.physical_start + first->entry.size)
             <= second->entry.physical_start)
-        return;
+        return 0;
 
     gd_memory_type type = higher_precedence(first->entry.type, second->entry.type);
     uint64_t first_physical_end = first->entry.physical_start + first->entry.size;
@@ -203,10 +205,10 @@ static void fix_overlap(mmap_entry *first)
         if (type == first->entry.type) {
             second->entry.size = second_physical_end - first_physical_end;
             second->entry.physical_start = second_physical_end - second->entry.size;
-            return;
+            return 0;
         } else if (type == second->entry.type) {
             first->entry.size = first->entry.physical_start - second->entry.physical_start;
-            return;
+            return 0;
         }
 
         new_entry.physical_start = first_physical_end;
@@ -221,8 +223,7 @@ static void fix_overlap(mmap_entry *first)
             RB_REMOVE(mmap_tree, &mmap, second);
             mmap_free(second);
 
-            fix_overlap(first);
-            return;
+            return fix_overlap(first);
         }
 
         new_entry.physical_start = second_physical_end;
@@ -231,22 +232,25 @@ static void fix_overlap(mmap_entry *first)
         new_entry.attributes = first->entry.attributes;
     } else {
         // Second entry is end of first
-        if (!(first->entry.size = second.physical_start - first.physical_start)) {
-            RB_REMOVE(mmap_tree, &mmap, first); mmap_free(first);
-        }
         second->entry.type = type;
-        return;
+        if (!(first->entry.size = second->entry.physical_start - first->entry.physical_start)) {
+            RB_REMOVE(mmap_tree, &mmap, first); mmap_free(first);
+            return 1;
+        }
+        return 0;
     }
 
     second->entry.attributes = first->entry.attributes | second->entry.attributes;
     second->entry.type = type;
+    second->entry.size = new_entry.physical_start - second->entry.physical_start;
 
     if (!(first->entry.size = second->entry.physical_start - first->entry.physical_start)) {
         RB_REMOVE(mmap_tree, &mmap, first); mmap_free(first);
+        mmap_add_entry(new_entry); return 1;
     }
 
-    second->entry.size = new_entry->entry.physical_start - second->entry.physical_start;
     mmap_add_entry(new_entry);
+    return 0;
 }
 
 void mmap_add_entry(gd_memory_map_entry entry)
@@ -282,9 +286,11 @@ void mmap_add_entry(gd_memory_map_entry entry)
     memcpy(&newent->entry, &entry, sizeof entry);
     RB_INSERT(mmap_tree, &mmap, newent);
 
-    fix_overlap(RB_PREV(mmap_tree, &mmap, newent));
-    fix_overlap(newent);
-    merge_adjacent(newent);
+    if (!fix_overlap(newent)) {
+        fix_overlap(RB_PREV(mmap_tree, &mmap, newent));
+        merge_adjacent(newent);
+    }
+
     ++mmap_key;
 }
 
