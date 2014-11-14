@@ -185,7 +185,7 @@ static void fix_overlap(mmap_entry *first)
 {
     if (!first) return;
     mmap_entry *second = RB_NEXT(mmap_tree, &mmap, first);
-    mmap_entry *new_entry = NULL;
+    gd_memory_map_entry new_entry = { 0 };
     if (!second) return;
 
     if ((first->entry.physical_start + first->entry.size)
@@ -209,35 +209,44 @@ static void fix_overlap(mmap_entry *first)
             return;
         }
 
-        new_entry = mmap_alloc();
-        new_entry->entry.physical_start = first_physical_end;
-        new_entry->entry.size = second_physical_end - first_physical_end;
-        new_entry->entry.type = type;
-        new_entry->entry.attributes = second->entry.attributes;
+        new_entry.physical_start = first_physical_end;
+        new_entry.size = second_physical_end - first_physical_end;
+        new_entry.type = type;
+        new_entry.attributes = second->entry.attributes;
     } else if (first_physical_end > second_physical_end) {
         // Second entry is a subset
 
-        if (type == first->entry.type)
-            return;
+        if (type == first->entry.type) {
+            // Redundant second entry.
+            RB_REMOVE(mmap_tree, &mmap, second);
+            mmap_free(second);
 
-        new_entry = mmap_alloc();
-        new_entry->entry.physical_start = second_physical_end;
-        new_entry->entry.size = first_physical_end - second_physical_end;
-        new_entry->entry.type = first->entry.type;
-        new_entry->entry.attributes = first->entry.attributes;
+            fix_overlap(first);
+            return;
+        }
+
+        new_entry.physical_start = second_physical_end;
+        new_entry.size = first_physical_end - second_physical_end;
+        new_entry.type = first->entry.type;
+        new_entry.attributes = first->entry.attributes;
     } else {
         // Second entry is end of first
-        first->entry.size = second_physical_end - second->entry.size;
+        if (!(first->entry.size = second.physical_start - first.physical_start)) {
+            RB_REMOVE(mmap_tree, &mmap, first); mmap_free(first);
+        }
         second->entry.type = type;
         return;
     }
 
-    first->entry.size = second->entry.physical_start - first->entry.physical_start;
-    second->entry.size = new_entry->entry.physical_start - second->entry.physical_start;
     second->entry.attributes = first->entry.attributes | second->entry.attributes;
     second->entry.type = type;
 
-    RB_INSERT(mmap_tree, &mmap, new_entry);
+    if (!(first->entry.size = second->entry.physical_start - first->entry.physical_start)) {
+        RB_REMOVE(mmap_tree, &mmap, first); mmap_free(first);
+    }
+
+    second->entry.size = new_entry->entry.physical_start - second->entry.physical_start;
+    mmap_add_entry(new_entry);
 }
 
 void mmap_add_entry(gd_memory_map_entry entry)
