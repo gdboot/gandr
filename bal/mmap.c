@@ -16,6 +16,7 @@
 
 #include <bal/mmap.h>
 #include <bal/misc.h>
+#include <gd_syscall.h>
 #include <gd_tree.h>
 #include <string.h>
 
@@ -58,7 +59,7 @@ static gd_memory_type overlap_precedence[] = {
     gd_boot_services_data, gd_conventional_memory, gd_reserved_memory_type
 };
 
-static mmap_entry *mmap_alloc(void)
+static mmap_entry *mmap_alloc_entry(void)
 {
     mmap_entry *mme = NULL;
     if (last_freed) {
@@ -68,7 +69,7 @@ static mmap_entry *mmap_alloc(void)
     } else {
         if (!allocatable) {
             RB_FOREACH (mme, mmap_tree, &mmap) {
-                if (mme->entry.physical_start > UINTPTR_MAX)
+                if (mme->entry.physical_start + 4096 > UINTPTR_MAX)
                     break;
 
                 if (mme->entry.type == gd_conventional_memory) {
@@ -90,8 +91,7 @@ static mmap_entry *mmap_alloc(void)
                             && (mme->entry.physical_start + mme->entry.size)
                                 == neighbour->entry.physical_start) {
 
-                        if ((mme->entry.physical_start + mme->entry.size - 4096)
-                                > UINTPTR_MAX)
+                        if (mme->entry.physical_start + mme->entry.size > UINTPTR_MAX)
                             break;
 
                         // slice out last 4kB
@@ -133,7 +133,7 @@ static mmap_entry *mmap_alloc(void)
     }
 }
 
-static void mmap_free(mmap_entry *ent)
+static void mmap_free_entry(mmap_entry *ent)
 {
     ent->rbnode.rbe_left  = last_freed;
     ent->rbnode.rbe_right = ent->rbnode.rbe_parent = NULL;
@@ -166,7 +166,7 @@ static void merge_adjacent(mmap_entry *middle)
                 == middle->entry.physical_start) {
         prev->entry.size += middle->entry.size;
         RB_REMOVE(mmap_tree, &mmap, middle);
-        mmap_free(middle);
+        mmap_free_entry(middle);
         ++mmap_key;
         middle = prev;
     }
@@ -176,7 +176,7 @@ static void merge_adjacent(mmap_entry *middle)
                 == next->entry.physical_start) {
         middle->entry.size += next->entry.size;
         RB_REMOVE(mmap_tree, &mmap, next);
-        mmap_free(next);
+        mmap_free_entry(next);
         ++mmap_key;
     }
 }
@@ -221,7 +221,7 @@ static int fix_overlap(mmap_entry *first)
         if (type == first->entry.type) {
             // Redundant second entry.
             RB_REMOVE(mmap_tree, &mmap, second);
-            mmap_free(second);
+            mmap_free_entry(second);
 
             return fix_overlap(first);
         }
@@ -234,7 +234,7 @@ static int fix_overlap(mmap_entry *first)
         // Second entry is end of first
         second->entry.type = type;
         if (!(first->entry.size = second->entry.physical_start - first->entry.physical_start)) {
-            RB_REMOVE(mmap_tree, &mmap, first); mmap_free(first);
+            RB_REMOVE(mmap_tree, &mmap, first); mmap_free_entry(first);
             return 1;
         }
         return 0;
@@ -245,11 +245,101 @@ static int fix_overlap(mmap_entry *first)
     second->entry.size = new_entry.physical_start - second->entry.physical_start;
 
     if (!(first->entry.size = second->entry.physical_start - first->entry.physical_start)) {
-        RB_REMOVE(mmap_tree, &mmap, first); mmap_free(first);
+        RB_REMOVE(mmap_tree, &mmap, first); mmap_free_entry(first);
         mmap_add_entry(new_entry); return 1;
     }
 
     mmap_add_entry(new_entry);
+    return 0;
+}
+
+int gd_alloc_pages(gd_memory_type type, void **presult, size_t count)
+{
+    if (!count)
+        return 0;
+
+    mmap_entry *mme = NULL;
+    RB_FOREACH (mme, mmap_tree, &mmap) {
+        if (mme->entry.physical_start + count * 4096 > UINTPTR_MAX)
+            break;
+
+        if (mme->entry.type == gd_conventional_memory
+            && mme->entry.size >= count * 4096) {
+            mmap_entry *neighbour;
+
+            if (mme->entry.size == count * 4096) {
+                mme->entry.type = type;
+                merge_adjacent(mme);
+            } else if ((neighbour = RB_PREV(mmap_tree, &mmap, mme))
+                    && neighbour->entry.type == type
+                    && (neighbour->entry.physical_start + neighbour->entry.size)
+                        == mme->entry.physical_start) {
+                // slice out first `count` pages.
+
+                *presult  = (void*)(uintptr_t) mme->entry.physical_start;
+
+                neighbour->entry.size += count * 4096;
+                mme->entry.size -= count * 4096;
+                mme->entry.physical_start += count * 4096;
+            } else if ((neighbour = RB_NEXT(mmap_tree, &mmap, mme))
+                    && neighbour->entry.type == type
+                    && (mme->entry.physical_start + mme->entry.size)
+                        == neighbour->entry.physical_start) {
+
+                if (mme->entry.physical_start + mme->entry.size > UINTPTR_MAX)
+                    break;
+
+                // slice out last `count` pages.
+                neighbour->entry.size += count * 4096;
+                neighbour->entry.physical_start -= count * 4096;
+                mme->entry.size -= count * 4096;
+
+                *presult  = (void*)(uintptr_t) neighbour->entry.physical_start;
+            } else {
+                // neither neigbour is appropriate
+                *presult  = (void*)(uintptr_t) mme->entry.physical_start;
+
+                mmap_entry *new_entry = mmap_alloc_entry();
+                new_entry->entry.type = type;
+                new_entry->entry.physical_start = mme->entry.physical_start;
+                new_entry->entry.size = count * 4096;
+                new_entry->entry.attributes = mme->entry.attributes;
+
+                mme->entry.physical_start += count * 4096;
+                mme->entry.size -= count * 4096;
+
+                RB_INSERT(mmap_tree, &mmap, new_entry);
+            }
+
+            ++mmap_key;
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
+int gd_free_pages(void *start_address, size_t count)
+{
+    /* Can free anything apart from unusable memory. */
+    gd_memory_type free_overlap_precedence[] = {
+        gd_unusable_memory, gd_conventional_memory, gd_pal_code, gd_mmio_port_space, gd_mmio,
+        gd_acpi_memory_nvs, gd_runtime_services_code, gd_runtime_services_data,
+        gd_acpi_reclaim_memory, gd_loader_code, gd_loader_data, gd_boot_services_code,
+        gd_boot_services_data, gd_reserved_memory_type
+    }, temp[sizeof overlap_precedence / sizeof (gd_memory_type)];
+
+    gd_memory_map_entry free = {
+        .physical_start = (uintptr_t) start_address,
+        .size = count * 4096,
+        .type = gd_conventional_memory
+    };
+
+    memcpy(&temp, &overlap_precedence, sizeof overlap_precedence);
+    memcpy(&overlap_precedence, &free_overlap_precedence, sizeof free_overlap_precedence);
+    mmap_add_entry(free);
+    memcpy(&overlap_precedence, &temp, sizeof overlap_precedence);
+
     return 0;
 }
 
@@ -282,7 +372,7 @@ void mmap_add_entry(gd_memory_map_entry entry)
             return;
     }
 
-    mmap_entry *newent = mmap_alloc();
+    mmap_entry *newent = mmap_alloc_entry();
     memcpy(&newent->entry, &entry, sizeof entry);
     RB_INSERT(mmap_tree, &mmap, newent);
 
