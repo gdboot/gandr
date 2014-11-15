@@ -19,6 +19,7 @@
 #include <gd_syscall.h>
 #include <gd_tree.h>
 #include <string.h>
+#include <errno.h>
 
 typedef struct mmap_entry {
     RB_ENTRY(mmap_entry) rbnode;
@@ -316,7 +317,7 @@ int gd_alloc_pages(gd_memory_type type, void **presult, size_t count)
         }
     }
 
-    return -1;
+    return ENOMEM;
 }
 
 int gd_free_pages(void *start_address, size_t count)
