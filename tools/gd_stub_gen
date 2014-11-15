@@ -183,7 +183,7 @@ class Parser:
             for i in range(0, len(func.params)):
                 file.write('            %s _arg%d = va_arg(ap, %s);\\\n' %
                     (func.params[i][0], i, func.params[i][0]))
-            file.write("        return gd_%s(")
+            file.write("        return gd_%s(" % func.name)
             file.write(', '.join('_arg%d' % i for i in range(0, len(func.params))))
             file.write(");\n")
             file.write("        }\n")

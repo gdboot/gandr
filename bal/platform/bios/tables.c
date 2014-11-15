@@ -14,7 +14,7 @@
  */
 
 #include <bal/tables.h>
-#include <bal/mmap.h>
+#include <platform/bios/bal/mmap.h>
 #include <gd_common.h>
 #include <stdbool.h>
 #include <string.h>

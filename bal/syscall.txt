@@ -1,3 +1,4 @@
 // core syscalls
 at 0x00000000
-syscall alloc_pages(uint32_t type, void **presult, size_t count)
+syscall alloc_pages(gd_memory_type type, void **presult, size_t count)
+syscall free_pages(void *start_address, size_t count)
