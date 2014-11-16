@@ -149,7 +149,7 @@ static mmap_entry *mmap_alloc_entry(void)
                         alloc_next->entry.type = gd_loader_data;
                         alloc_next->entry.physical_start = mme->entry.physical_start;
                         alloc_next->entry.size = 4096;
-                        alloc_next->entry.attributes = 0;
+                        alloc_next->entry.attributes = mme->entry.attributes;
 
                         mme->entry.physical_start += 4096;
                         mme->entry.size -= 4096;
