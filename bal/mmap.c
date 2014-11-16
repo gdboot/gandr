@@ -60,6 +60,40 @@ static gd_memory_type overlap_precedence[] = {
     gd_boot_services_data, gd_conventional_memory, gd_reserved_memory_type
 };
 
+
+static void mmap_free_entry(mmap_entry *ent)
+{
+    ent->rbnode.rbe_left  = last_freed;
+    ent->rbnode.rbe_right = ent->rbnode.rbe_parent = NULL;
+    last_freed = ent;
+}
+
+static void merge_adjacent(mmap_entry *middle)
+{
+    mmap_entry *prev = RB_PREV(mmap_tree, &mmap, middle);
+    mmap_entry *next = RB_NEXT(mmap_tree, &mmap, middle);
+
+    /* TODO: attributes */
+    if (prev && prev->entry.type == middle->entry.type
+            && prev->entry.physical_start + prev->entry.size
+                == middle->entry.physical_start) {
+        prev->entry.size += middle->entry.size;
+        RB_REMOVE(mmap_tree, &mmap, middle);
+        mmap_free_entry(middle);
+        ++mmap_key;
+        middle = prev;
+    }
+
+    if (next && middle->entry.type == next->entry.type
+            && middle->entry.physical_start + middle->entry.size
+                == next->entry.physical_start) {
+        middle->entry.size += next->entry.size;
+        RB_REMOVE(mmap_tree, &mmap, next);
+        mmap_free_entry(next);
+        ++mmap_key;
+    }
+}
+
 static mmap_entry *mmap_alloc_entry(void)
 {
     mmap_entry *mme = NULL;
@@ -75,7 +109,13 @@ static mmap_entry *mmap_alloc_entry(void)
 
                 if (mme->entry.type == gd_conventional_memory) {
                     mmap_entry *neighbour;
-                    if ((neighbour = RB_PREV(mmap_tree, &mmap, mme))
+                    if (mme->entry.size == 4096) {
+                        alloc_next  = (mmap_entry*)(uintptr_t) mme->entry.physical_start;
+                        allocatable = 4096 / sizeof(*mme);
+
+                        mme->entry.type = gd_loader_data;
+                        merge_adjacent(mme);
+                    } else if ((neighbour = RB_PREV(mmap_tree, &mmap, mme))
                             && neighbour->entry.type == gd_loader_data
                             && (neighbour->entry.physical_start + neighbour->entry.size)
                                 == mme->entry.physical_start) {
@@ -134,13 +174,6 @@ static mmap_entry *mmap_alloc_entry(void)
     }
 }
 
-static void mmap_free_entry(mmap_entry *ent)
-{
-    ent->rbnode.rbe_left  = last_freed;
-    ent->rbnode.rbe_right = ent->rbnode.rbe_parent = NULL;
-    last_freed = ent;
-}
-
 /*! Returns the type with higher precedence. */
 static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
 {
@@ -154,32 +187,6 @@ static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
 
     // Unusable.
     return gd_unusable_memory;
-}
-
-static void merge_adjacent(mmap_entry *middle)
-{
-    mmap_entry *prev = RB_PREV(mmap_tree, &mmap, middle);
-    mmap_entry *next = RB_NEXT(mmap_tree, &mmap, middle);
-
-    /* TODO: attributes */
-    if (prev && prev->entry.type == middle->entry.type
-            && prev->entry.physical_start + prev->entry.size
-                == middle->entry.physical_start) {
-        prev->entry.size += middle->entry.size;
-        RB_REMOVE(mmap_tree, &mmap, middle);
-        mmap_free_entry(middle);
-        ++mmap_key;
-        middle = prev;
-    }
-
-    if (next && middle->entry.type == next->entry.type
-            && middle->entry.physical_start + middle->entry.size
-                == next->entry.physical_start) {
-        middle->entry.size += next->entry.size;
-        RB_REMOVE(mmap_tree, &mmap, next);
-        mmap_free_entry(next);
-        ++mmap_key;
-    }
 }
 
 /* Fixes overlap bewteen \p first and the following node */
