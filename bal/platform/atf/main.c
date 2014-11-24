@@ -1,5 +1,6 @@
 #include <gd_bal.h>
 #include <bal/device/uart/arm_pl011.h>
+#include <bal/device/dt.h>
 #include <stdio.h>
 #include <inttypes.h>
 #include <_PDCLIB_io.h>
@@ -46,6 +47,8 @@ void bal_main_atf(void *pdtree)
 
     printf("Tree:\n");
     walk_children(pdtree, 1, fdt_next_node(pdtree, -1, NULL));
+
+    dt_platform_init_fdt(pdtree);
 
     for(;;);
 }

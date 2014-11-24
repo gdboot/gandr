@@ -18,6 +18,11 @@ SECTIONS
         __stext = .;
         *(.text*)
         *(.rodata*)
+
+        __fdt_drivers_begin = .;
+        KEEP(*(fdt_drivers))
+        __fdt_drivers_end = .;
+
         __etext = .;
     }
 
