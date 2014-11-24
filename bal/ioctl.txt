@@ -12,11 +12,12 @@ ioctl close()
 at 0x00010000
 ioctl device_get_name(char *buf, size_t szBuf, size_t *szNeeded)
 ioctl device_get_path(char *buf, size_t szBuf, size_t *szNeeded)
+ioctl device_get_parent(gd_device_t *pparent)
 
-// FDT ioctls
+// DT ioctls
 at 0x00010100
-struct fdt_device_description
-ioctl device_get_fdt_description(struct fdt_device_description *descr)
+struct dt_node
+ioctl device_get_dt_node(struct dt_node **node)
 
 // Device type specific ioctls
 // UART ioctls

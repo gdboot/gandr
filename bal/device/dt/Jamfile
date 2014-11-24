@@ -1,0 +1,5 @@
+SubDir GD_TOP bal device dt ;
+GdBalSources
+    dt_tree.c
+    dt_device.c
+    dt_system.c ;

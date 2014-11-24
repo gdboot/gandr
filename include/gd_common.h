@@ -42,7 +42,7 @@ typedef struct {
 
     /*! Length of the table, in bytes, including this header */
     uint32_t length;
-} __attribute__((packed)) gd_table;
+} gd_table;
 
 #define GD_TABLE_ID(a, b, c, d) \
     ((uint32_t) ((a << 24) | (b << 16) | (c << 8) | (d)))
@@ -114,14 +114,14 @@ typedef struct {
      *  \see gd_memory_map_attribute
      */
     uint64_t attributes;
-} __attribute__((packed)) gd_memory_map_entry;
+} gd_memory_map_entry;
 
 /*! System memory map
  */
 typedef struct {
     gd_table header;
     gd_memory_map_entry entries[];
-} __attribute__((packed)) gd_memory_map_table;
+} gd_memory_map_table;
 #define GD_MEMORY_MAP_TABLE_ID GD_TABLE_ID('M', 'M', 'A', 'P')
 
 static inline size_t gd_mmap_get_size(gd_memory_map_table *table)
@@ -143,7 +143,7 @@ typedef struct {
     uint64_t xsdt_address;
     /*! The ACPI 1.0 RSDT address will be placed here */
     uint32_t rsdt_address;
-} __attribute__((packed)) gd_rsdt_pointer_table;
+} gd_rsdt_pointer_table;
 #define GD_RSDT_POINTER_TABLE_ID GD_TABLE_ID('R', 'S', 'D', 'T')
 
 typedef struct {
@@ -153,7 +153,7 @@ typedef struct {
     uint8_t version;
     uint8_t checksum;
     uint8_t feature_bytes[5];
-} __attribute__((packed)) mpfp_structure;
+} mpfp_structure;
 
 /*! Pointers to description tables common to IBM-PC compatibles.
  *
@@ -169,7 +169,7 @@ typedef struct {
 
     /*! Pointer to the SMBIOS entry point table. Zero if not found. */
     uint32_t smbios_entry_point_address;
-} __attribute__((packed)) gd_pc_pointer_table;
+} gd_pc_pointer_table;
 #define GD_PC_POINTER_TABLE_ID GD_TABLE_ID('P', 'C', 'T', 'B')
 
 #endif
