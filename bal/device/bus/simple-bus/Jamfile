@@ -1,0 +1,5 @@
+SubDir GD_TOP bal device bus simple-bus ;
+
+GdBalSources simple-bus.c ;
+
+SubIncludeOnce GD_TOP bal device dt ;

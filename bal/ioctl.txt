@@ -19,6 +19,11 @@ at 0x00010100
 struct dt_node
 ioctl device_get_dt_node(struct dt_node **node)
 
+// Bus ioctls
+at 0x00010200
+ioctl bus_get_child_reg_addr(gd_device_t child, unsigned idx, gio_addr *addr, size_t *len)
+ioctl bus_get_child_reg_count(gd_device_t child, unsigned *count)
+
 // Device type specific ioctls
 // UART ioctls
 at 0x00020100
