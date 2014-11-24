@@ -277,6 +277,8 @@ int gd_alloc_pages(gd_memory_type type, void **presult, size_t count)
 
             if (mme->entry.size == count * 4096) {
                 mme->entry.type = type;
+                *presult  = (void*)(uintptr_t) mme->entry.physical_start;
+
                 merge_adjacent(mme);
             } else if ((neighbour = RB_PREV(mmap_tree, &mmap, mme))
                     && neighbour->entry.type == type
