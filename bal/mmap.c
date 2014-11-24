@@ -20,6 +20,14 @@
 #include <gd_tree.h>
 #include <string.h>
 #include <errno.h>
+#include <stdio.h>
+#include <inttypes.h>
+
+#if 0
+#define TRACE(...) printf(__VA_ARGS__)
+#else
+#define TRACE(...)
+#endif
 
 typedef struct mmap_entry {
     RB_ENTRY(mmap_entry) rbnode;
@@ -215,7 +223,7 @@ static int fix_overlap(mmap_entry *first)
             second->entry.physical_start = second_physical_end - second->entry.size;
             return 0;
         } else if (type == second->entry.type) {
-            first->entry.size = first->entry.physical_start - second->entry.physical_start;
+            first->entry.size = second->entry.physical_start - first->entry.physical_start;
             return 0;
         }
 
@@ -266,10 +274,14 @@ int gd_alloc_pages(gd_memory_type type, void **presult, size_t count)
     if (!count)
         return 0;
 
+    TRACE("Attempt to alloc %ul pages \n", count);
     mmap_entry *mme = NULL;
     RB_FOREACH (mme, mmap_tree, &mmap) {
-        if (mme->entry.physical_start + count * 4096 > UINTPTR_MAX)
+        TRACE("Try %" PRIx64 " type %d.. ", mme->entry.physical_start, mme->entry.type);
+        if (mme->entry.physical_start + count * 4096 > UINTPTR_MAX) {
+            TRACE("Address space limit\n");
             break;
+        }
 
         if (mme->entry.type == gd_conventional_memory
             && mme->entry.size >= count * 4096) {
@@ -323,6 +335,8 @@ int gd_alloc_pages(gd_memory_type type, void **presult, size_t count)
 
             ++mmap_key;
             return 0;
+        } else {
+            TRACE("Wrong type or too small\n");
         }
     }
 
@@ -384,7 +398,27 @@ void mmap_add_entry(gd_memory_map_entry entry)
 
     mmap_entry *newent = mmap_alloc_entry();
     memcpy(&newent->entry, &entry, sizeof entry);
-    RB_INSERT(mmap_tree, &mmap, newent);
+
+    mmap_entry *oldent;
+    if ((oldent = RB_INSERT(mmap_tree, &mmap, newent))) {
+        gd_memory_type type = higher_precedence(oldent->entry.type, newent->entry.type);
+        if (oldent->entry.size == newent->entry.size) {
+            oldent->entry.type = type;
+            mmap_free_entry(newent);
+            return;
+        } else if (oldent->entry.size < newent->entry.size) {
+            oldent->entry.type = type;
+            newent->entry.size -= oldent->entry.size;
+            newent->entry.physical_start += oldent->entry.size;
+        } else { // oldent->entry.size > newent->entry.size
+            newent->entry.type = type;
+            oldent->entry.size -= newent->entry.size;
+            oldent->entry.physical_start += newent->entry.size;
+        }
+
+        if (RB_INSERT(mmap_tree, &mmap, newent))
+            panic("Bad memory map tree?");
+    }
 
     if (!fix_overlap(newent)) {
         fix_overlap(RB_PREV(mmap_tree, &mmap, newent));
