@@ -18,17 +18,20 @@
 #include <stdint.h>
 #include <gd_bal.h>
 #include <bal/gio.h>
+#include <bal/device/dt.h>
 
 typedef struct {
-    struct gd_device dev;
+    GD_DEVICE;
+    //! DT node
+    dt_node_t node;
     //! Base address
     gio_addr base;
     //! BRG clock speed
     uint32_t brg_clock;
 } arm_pl011_dev;
 
-#define DEFINE_ARM_PL011(name, base, brg_clock) \
-    arm_pl011_dev name = {{NULL}, base, brg_clock}
+#define DEFINE_ARM_PL011(name, base_, brg_clock_) \
+    arm_pl011_dev name = { .base = base_, .brg_clock = brg_clock_}
 
 void arm_pl011_init(arm_pl011_dev *dev);
 

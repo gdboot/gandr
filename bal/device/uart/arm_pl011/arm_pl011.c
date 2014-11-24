@@ -14,7 +14,12 @@
  */
 #include <bal/device/uart/arm_pl011.h>
 #include <bal/device/uart.h>
+#include <bal/device/dt.h>
+#include <bal/misc.h>
+#include <libfdt.h>
 #include <errno.h>
+#include <string.h>
+#include <stdlib.h>
 
 enum reg {
     UART_DR = 0,
@@ -161,11 +166,18 @@ static int pl011_set_config(
     return 0;
 }
 
-GD_BEGIN_IOCTL_MAP(arm_pl011_dev *, arm_pl011_ioctl)
+static int pl011_device_get_dt_node(arm_pl011_dev *dev, dt_node_t *pnode)
+{
+    *pnode = dev->node;
+    return 0;
+}
+
+static GD_BEGIN_IOCTL_MAP(arm_pl011_dev *, arm_pl011_ioctl)
     GD_MAP_WRITE_IOCTL(pl011_write)
     GD_MAP_READ_IOCTL(pl011_read)
     GD_MAP_UART_SET_CONFIG_IOCTL(pl011_set_config)
-GD_END_IOCTL_MAP()
+    GD_MAP_DEVICE_GET_DT_NODE_IOCTL(pl011_device_get_dt_node)
+GD_END_IOCTL_MAP_FORWARD_BASE(dt_base_ioctl)
 
 
 void arm_pl011_init(arm_pl011_dev *dev)
@@ -189,3 +201,35 @@ void arm_pl011_init(arm_pl011_dev *dev)
         pl011_set_config(dev, &conf);
     }
 }
+
+static gd_device_t arm_pl011_dt_driver_attach(dt_node_t node)
+{
+    int rv;
+    arm_pl011_dev *self = malloc(sizeof *self);
+    if (!self) goto err0;
+
+    self->ioctl = arm_pl011_ioctl;
+    self->node  = node;
+
+    gd_device_t parent;
+    if ((rv = gd_device_get_parent(&self->dev, &parent)))
+        goto err0;
+
+    size_t regsz;
+    if (gd_bus_get_child_reg_addr(parent, (gd_device_t) self, 0, &self->base, &regsz))
+        goto err1;
+
+    if (regsz < (UART_DMACR * 4)) {
+        panic("pl011 register window too small");
+    }
+
+    arm_pl011_init(self);
+    return &self->dev;
+
+err1:
+    free(self);
+err0:
+    return NULL;
+}
+
+DT_DECLARE_DEVICE_DRIVER(arm_pl011_dt_dev, "arm,pl011", arm_pl011_dt_driver_attach)
