@@ -198,17 +198,16 @@ static gd_memory_type higher_precedence(gd_memory_type a, gd_memory_type b)
 }
 
 /* Fixes overlap bewteen \p first and the following node */
-/* Returns non-zero value if removes first from mmap. */
-static int fix_overlap(mmap_entry *first)
+static void fix_overlap(mmap_entry *first)
 {
-    if (!first) return 0;
+    if (!first) return;
     mmap_entry *second = RB_NEXT(mmap_tree, &mmap, first);
     gd_memory_map_entry new_entry = { 0 };
-    if (!second) return 0;
+    if (!second) return;
 
     if ((first->entry.physical_start + first->entry.size)
             <= second->entry.physical_start)
-        return 0;
+        return;
 
     gd_memory_type type = higher_precedence(first->entry.type, second->entry.type);
     uint64_t first_physical_end = first->entry.physical_start + first->entry.size;
@@ -221,10 +220,10 @@ static int fix_overlap(mmap_entry *first)
         if (type == first->entry.type) {
             second->entry.size = second_physical_end - first_physical_end;
             second->entry.physical_start = second_physical_end - second->entry.size;
-            return 0;
+            return;
         } else if (type == second->entry.type) {
             first->entry.size = second->entry.physical_start - first->entry.physical_start;
-            return 0;
+            return;
         }
 
         new_entry.physical_start = first_physical_end;
@@ -239,7 +238,8 @@ static int fix_overlap(mmap_entry *first)
             RB_REMOVE(mmap_tree, &mmap, second);
             mmap_free_entry(second);
 
-            return fix_overlap(first);
+            fix_overlap(first);
+            return;
         }
 
         new_entry.physical_start = second_physical_end;
@@ -249,24 +249,17 @@ static int fix_overlap(mmap_entry *first)
     } else {
         // Second entry is end of first
         second->entry.type = type;
-        if (!(first->entry.size = second->entry.physical_start - first->entry.physical_start)) {
-            RB_REMOVE(mmap_tree, &mmap, first); mmap_free_entry(first);
-            return 1;
-        }
-        return 0;
+        first->entry.size = second->entry.physical_start - first->entry.physical_start;
+        return;
     }
 
     second->entry.attributes = first->entry.attributes | second->entry.attributes;
     second->entry.type = type;
     second->entry.size = new_entry.physical_start - second->entry.physical_start;
-
-    if (!(first->entry.size = second->entry.physical_start - first->entry.physical_start)) {
-        RB_REMOVE(mmap_tree, &mmap, first); mmap_free_entry(first);
-        mmap_add_entry(new_entry); return 1;
-    }
+    first->entry.size = second->entry.physical_start - first->entry.physical_start;
 
     mmap_add_entry(new_entry);
-    return 0;
+    return;
 }
 
 int gd_alloc_pages(gd_memory_type type, void **presult, size_t count)
@@ -404,23 +397,32 @@ void mmap_add_entry(gd_memory_map_entry entry)
         gd_memory_type type = higher_precedence(oldent->entry.type, newent->entry.type);
         if (oldent->entry.size == newent->entry.size) {
             oldent->entry.type = type;
+
             mmap_free_entry(newent);
-            return;
-        } else if (oldent->entry.size < newent->entry.size) {
-            oldent->entry.type = type;
-            newent->entry.size -= oldent->entry.size;
-            newent->entry.physical_start += oldent->entry.size;
-        } else { // oldent->entry.size > newent->entry.size
+            merge_adjacent(oldent);
+        } else if (oldent->entry.size > newent->entry.size) {
             newent->entry.type = type;
             oldent->entry.size -= newent->entry.size;
             oldent->entry.physical_start += newent->entry.size;
+
+            if (RB_INSERT(mmap_tree, &mmap, newent))
+                panic("Bad memory map tree?");
+
+            /* New entry can't overlap. */
+            merge_adjacent(newent);
+        } else { // oldent->entry.size < newent->entry.size
+            oldent->entry.type = type;
+            newent->entry.size -= oldent->entry.size;
+            newent->entry.physical_start += oldent->entry.size;
+
+            if (RB_INSERT(mmap_tree, &mmap, newent))
+                panic("Bad memory map tree?");
+
+            /* New entry can't overlap with previous entry. */
+            fix_overlap(newent); merge_adjacent(newent);
         }
-
-        if (RB_INSERT(mmap_tree, &mmap, newent))
-            panic("Bad memory map tree?");
-    }
-
-    if (!fix_overlap(newent)) {
+    } else {
+        fix_overlap(newent);
         fix_overlap(RB_PREV(mmap_tree, &mmap, newent));
         merge_adjacent(newent);
     }
