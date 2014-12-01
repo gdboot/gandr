@@ -45,7 +45,8 @@ int gd_syscall(unsigned, ...);
 #include "gd_ioctl.h"
 #include "gd_ioctl_map.h"
 #define GD_BEGIN_IOCTL_MAP(_type, _name)                                       \
-int _name(gd_device_t dev_, unsigned ioctl, ...)     \
+int _name(gd_device_t dev_, unsigned ioctl, ...);                              \
+int _name(gd_device_t dev_, unsigned ioctl, ...)                               \
 {                                                                              \
     int rv = 0;                                                                \
     _type dev = (_type) dev_;                                                  \
@@ -60,7 +61,7 @@ postForward:                                                                   \
     }
 
 #define GD_BEGIN_IOCTL_BASE_MAP(_type, _name)                                  \
-int _name(gd_device_t dev_, unsigned ioctl, va_list *pap)               \
+int _name(gd_device_t dev_, unsigned ioctl, va_list *pap)                      \
 {                                                                              \
     int rv = 0;                                                                \
     _type dev = (_type) dev_;                                                  \

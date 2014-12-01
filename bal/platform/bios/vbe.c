@@ -18,6 +18,7 @@
 
 volatile struct vbe_info_block vbe_info_block;
 
+void vbe_init();
 void vbe_init()
 {
     // Check for valid video card.
