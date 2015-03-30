@@ -37,7 +37,7 @@ static int pread(cdrom_dev *dev, void *buf, size_t nbytes, size_t *nbytesread, u
         return 0;
 
     if ((uintptr_t) buf > (0x100000 - 2048)) {
-        read_buffer = scratch_buffer;
+        read_buffer = (void*)scratch_buffer;
         nbytes = nbytes > sizeof scratch_buffer ?
                  sizeof scratch_buffer & ~0x7FF : nbytes;
     } else {

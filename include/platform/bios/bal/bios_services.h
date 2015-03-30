@@ -74,7 +74,7 @@ extern struct bios_service_table *bios_services;
 void bios_far_call(uint32_t address, struct bios_registers *regs, const void* stack_data, unsigned stack_size);
 void bios_int_call(uint8_t  num,     struct bios_registers *regs);
 
-extern uint8_t scratch_buffer[4096];
+extern volatile uint8_t scratch_buffer[4096];
 
 /*! Get a real mode segment from the given linear address */
 static inline uint16_t rm_seg_from_ptr(const void *p)

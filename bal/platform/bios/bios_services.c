@@ -22,7 +22,7 @@
  #define R(x) "%%r" #x
 #endif
 
-uint8_t scratch_buffer[4096];
+volatile uint8_t scratch_buffer[4096];
 struct bios_service_table *bios_services;
 
 static inline void* push(void *restrict *restrict psp, const void *restrict src, size_t len)
