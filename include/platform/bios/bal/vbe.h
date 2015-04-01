@@ -47,6 +47,7 @@ struct vbe_mode_info {
     uint16_t bytes_per_scanline;
 
     /* Optional for VESA modes in v1.0/1.1. */
+    /* VBE v1.2+. */
     uint16_t width;                 /* In pixels (graphics) or characters (text). */
     uint16_t height;                /* In pixels (graphics) or characters (text). */
     uint8_t width_of_char_cell;     /* In pixels. */
@@ -59,7 +60,6 @@ struct vbe_mode_info {
     uint8_t image_pages;
     uint8_t reserved_0;             /* 0x00 for VBE 1.0-2.0, 0x01 for VBE 3.0. */
 
-    /* VBE v1.2+. */
     uint8_t red_mask_size;
     uint8_t red_field_pos;
     uint8_t green_mask_size;
@@ -67,7 +67,7 @@ struct vbe_mode_info {
     uint8_t blue_mask_size;
     uint8_t blue_field_pos;
     uint8_t reserved_mask_size;
-    uint8_t reserved_field_position;
+    uint8_t reserved_field_pos;
     uint8_t direct_color_attr;
 
     /* VBE 2.0+. */
@@ -109,20 +109,62 @@ enum vbe_mode_attributes {
 };
 
 enum vbe_window_attributes {
-    VBE_WINDOW_ATTR_RELOCATABLE = (1 << 1),
-    VBE_WINDOW_ATTR_READABLE    = (1 << 2),
-    VBE_WINDOW_ATTR_WRITEABLE   = (1 << 3)
+    VBE_WINDOW_ATTR_SUPPORTED   = (1 << 0),
+    VBE_WINDOW_ATTR_READABLE    = (1 << 1),
+    VBE_WINDOW_ATTR_WRITEABLE   = (1 << 2)
+};
+
+enum vbe_direct_color_attrs {
+    VBE_DC_ATTR_COLOR_RAMP_PROGRAMMABLE = (1 << 0),
+    VBE_DC_ATTR_RESERVED_FIELD_USABLE   = (1 << 1)
 };
 
 enum vbe_memory_model {
-    TEXT_MODE = 0,
-    CGA_GRAPHICS,
-    HERCULES_GRAPHICS,
-    PLANAR,
-    PACKED_PIXEL,
-    NON_CHAIN_256_COLOR,
-    DIRECT_COLOR,
-    YUV
+    VBE_MM_TEXT_MODE = 0,
+    VBE_MM_CGA_GRAPHICS,
+    VBE_MM_HERCULES_GRAPHICS,
+    VBE_MM_PLANAR,
+    VBE_MM_PACKED_PIXEL,
+    VBE_MM_NON_CHAIN_256_COLOR,
+    VBE_MM_DIRECT_COLOR,
+    VBE_MM_YUV
+};
+
+struct mode_info {
+    uint32_t mode_identifier;
+    uint16_t mode_type;
+    uint32_t mode_attributes;
+
+    uint16_t width;                 /* In pixels (graphics) or characters (text). */
+    uint16_t height;                /* In pixels (graphics) or characters (text). */
+    uint8_t width_of_char_cell;     /* In pixels. */
+    uint8_t height_of_char_cell;    /* In pixels. */
+    uint8_t depth;
+    uint32_t bytes_per_scanline;
+
+    uint8_t red_mask_size;
+    uint8_t red_field_pos;
+    uint8_t green_mask_size;
+    uint8_t green_field_pos;
+    uint8_t blue_mask_size;
+    uint8_t blue_field_pos;
+    uint8_t reserved_mask_size;
+    uint8_t reserved_field_pos;
+
+    uint64_t lfb_address;
+    uint32_t max_pixel_clock;
+};
+
+enum mode_attributes {
+    ATTR_RESERVED_FIELD_USABLE       = (1 << 0),
+    ATTR_DOUBLE_SCAN_MODE_SUPPORTED  = (1 << 1),
+    ATTR_INTERLACE_MODE_SUPPORTED    = (1 << 2)
+};
+
+enum mode_type {
+    DIRECT_COLOR_MODE           = 0,
+    PACKED_PIXEL_MODE           = 1,
+    VGA_TEXT_MODE               = 2
 };
 
 void vbe_init();
