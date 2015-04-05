@@ -255,6 +255,7 @@ void vbe_init()
 
         if (vbe_info_block.version >= 0x0200 &&
             (vbe_mode_info->attributes & VBE_MODE_ATTR_LINEAR_FRAME_BUFFER_MODE)) {
+            new_mode.mode_identifier |= VBE_ID_USE_LFB;
             new_mode.lfb_address = vbe_mode_info->lfb_address;
             if (vbe_info_block.version >= 0x0300) {
                 new_mode.bytes_per_scanline = vbe_mode_info->lin_bytes_per_scanline;
@@ -270,6 +271,7 @@ void vbe_init()
                 }
             }
         } else {
+            new_mode.mode_identifier &= ~VBE_ID_USE_LFB;
             if (new_mode.height *
                 new_mode.bytes_per_scanline > vbe_mode_info->window_size)
                 continue; /* can fit in one window? */
@@ -300,4 +302,66 @@ void vbe_init()
         memcpy(&new_entry->node, &new_mode, sizeof (struct mode_info));
         SLIST_INSERT_HEAD(&modes, new_entry, node);
     }
+}
+
+static struct {
+    uint8_t blue;
+    uint8_t green;
+    uint8_t red;
+    uint8_t unused;
+} __attribute__((packed)) palette[256];
+
+/*! Switch to given mode. */
+int vbe_switch_mode(struct mode_info mode)
+{
+    // Set mode.
+    // TODO: support user specified CRTCInfoBlock structure.
+    struct bios_registers regs = { .eax = 0x4F02, .ebx = mode.mode_identifier };
+    bios_int_call(0x10, &regs);
+
+    if (regs.eax & 0xFFFF)
+        return -1; /* Unsuccessful set mode call */
+
+    if (mode.depth == 8 && mode.mode_type == PACKED_PIXEL_MODE) {
+        uint8_t bits_per_color = 6;
+        // Get color ramp format.
+        regs.eax = 0x4F08; regs.ebx = 0x0001;
+        bios_int_call(0x10, &regs);
+
+        // If successful.
+        if (!(regs.eax & 0xFFFF))
+            bits_per_color = (regs.ebx >> 8) & 0xFF;
+
+        // Set color ramp according to mask and sizes.
+        for (uint32_t i = 0; i < 256; i++) {
+            palette[i].blue = (i >> mode.blue_field_pos) & ((1 << mode.blue_mask_size) - 1);
+            // Just in case some weird palette size.
+            palette[i].blue <<= (8 - mode.blue_mask_size);
+            palette[i].blue >>= (8 - bits_per_color);
+
+            palette[i].green = (i >> mode.green_field_pos) & ((1 << mode.green_mask_size) - 1);
+            // Just in case some weird palette size.
+            palette[i].green <<= (8 - mode.green_mask_size);
+            palette[i].green >>= (8 - bits_per_color);
+
+            palette[i].red = (i >> mode.red_field_pos) & ((1 << mode.red_mask_size) - 1);
+            // Just in case some weird palette size.
+            palette[i].red <<= (8 - mode.red_mask_size);
+            palette[i].red >>= (8 - bits_per_color);
+
+            palette[i].unused = 0;
+        }
+
+        regs.eax = 0x4F09; regs.ebx = 0x80; /* set palette data during vertical retrace */
+        regs.ecx = 256; /* number of registers to update */
+        regs.edx = 0; /* to start from register 0 */
+        regs.es = rm_seg_from_ptr(&palette);
+        regs.edi = rm_offset_from_ptr(&palette);
+        bios_int_call(0x10, &regs);
+
+        if (regs.eax & 0xFFFF)
+            return -1;
+    }
+
+    return 0;
 }

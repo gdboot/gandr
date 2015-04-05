@@ -130,6 +130,12 @@ enum vbe_memory_model {
     VBE_MM_YUV
 };
 
+enum mode_identifier_flags {
+    VBE_ID_USE_SPECIFIED_CRTC_VALUES    = (1 << 11),
+    VBE_ID_USE_LFB                      = (1 << 14),
+    VBE_ID_DONT_CLEAR_MEMORY            = (1 << 15)
+};
+
 struct mode_info {
     uint32_t mode_identifier;
     uint16_t mode_type;
@@ -169,5 +175,8 @@ enum mode_type {
 };
 
 void vbe_init();
+
+/*! Switch to given mode. */
+int vbe_switch_mode(struct mode_info mode);
 
 #endif
