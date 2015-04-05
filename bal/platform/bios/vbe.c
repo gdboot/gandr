@@ -149,6 +149,7 @@ void vbe_init()
         if (vbe_mode_info->direct_color_attr & VBE_DC_ATTR_RESERVED_FIELD_USABLE)
             new_mode.mode_attributes |= ATTR_RESERVED_FIELD_USABLE;
 
+        new_mode.mode_attributes |= ATTR_VGA_COMPATIBLE;
         new_mode.bytes_per_scanline = vbe_mode_info->bytes_per_scanline;
         if (vbe_info_block.version < 0x0102 &&
             !(vbe_mode_info->attributes & VBE_MODE_ATTR_EXTENDED_INFORMATION_AVAILABLE)) {
@@ -192,6 +193,16 @@ void vbe_init()
                     break;
                 case VBE_MM_DIRECT_COLOR:
                     new_mode.mode_type = DIRECT_COLOR_MODE;
+            }
+
+            if (vbe_mode_info->attributes & VBE_MODE_ATTR_NOT_VGA_COMPATIBLE) {
+                // Not VGA compatible.
+                new_mode.mode_attributes &= ~ATTR_VGA_COMPATIBLE;
+
+                // If 8-bpp packed pixel, need color ramp programmable.
+                if (new_mode.depth == 8 && new_mode.mode_type == PACKED_PIXEL_MODE &&
+                    !(vbe_mode_info->direct_color_attr & VBE_DC_ATTR_COLOR_RAMP_PROGRAMMABLE))
+                    continue;
             }
 
             if (vbe_info_block.version >= 0x0300)

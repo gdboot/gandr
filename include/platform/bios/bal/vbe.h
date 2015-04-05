@@ -158,7 +158,8 @@ struct mode_info {
 enum mode_attributes {
     ATTR_RESERVED_FIELD_USABLE       = (1 << 0),
     ATTR_DOUBLE_SCAN_MODE_SUPPORTED  = (1 << 1),
-    ATTR_INTERLACE_MODE_SUPPORTED    = (1 << 2)
+    ATTR_INTERLACE_MODE_SUPPORTED    = (1 << 2),
+    ATTR_VGA_COMPATIBLE              = (1 << 3)
 };
 
 enum mode_type {
