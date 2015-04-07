@@ -15,7 +15,9 @@
 
 #ifndef GD_BAL_VBE_H
 #define GD_BAL_VBE_H
+
 #include <gd_bal.h>
+#include <bal/device/fb.h>
 
 struct vbe_info_block {
     uint8_t signature[4];
@@ -134,44 +136,6 @@ enum mode_identifier_flags {
     VBE_ID_USE_SPECIFIED_CRTC_VALUES    = (1 << 11),
     VBE_ID_USE_LFB                      = (1 << 14),
     VBE_ID_DONT_CLEAR_MEMORY            = (1 << 15)
-};
-
-struct mode_info {
-    uint32_t mode_identifier;
-    uint16_t mode_type;
-    uint32_t mode_attributes;
-
-    uint16_t width;                 /* In pixels (graphics) or characters (text). */
-    uint16_t height;                /* In pixels (graphics) or characters (text). */
-    uint8_t width_of_char_cell;     /* In pixels. */
-    uint8_t height_of_char_cell;    /* In pixels. */
-    uint8_t depth;
-    uint32_t bytes_per_scanline;
-
-    uint8_t red_mask_size;
-    uint8_t red_field_pos;
-    uint8_t green_mask_size;
-    uint8_t green_field_pos;
-    uint8_t blue_mask_size;
-    uint8_t blue_field_pos;
-    uint8_t reserved_mask_size;
-    uint8_t reserved_field_pos;
-
-    uint64_t lfb_address;
-    uint32_t max_pixel_clock;
-};
-
-enum mode_attributes {
-    ATTR_RESERVED_FIELD_USABLE       = (1 << 0),
-    ATTR_DOUBLE_SCAN_MODE_SUPPORTED  = (1 << 1),
-    ATTR_INTERLACE_MODE_SUPPORTED    = (1 << 2),
-    ATTR_VGA_COMPATIBLE              = (1 << 3)
-};
-
-enum mode_type {
-    DIRECT_COLOR_MODE           = 0,
-    PACKED_PIXEL_MODE           = 1,
-    VGA_TEXT_MODE               = 2
 };
 
 void vbe_init();

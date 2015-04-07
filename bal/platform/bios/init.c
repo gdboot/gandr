@@ -21,6 +21,7 @@
 #include <bal/mmap.h>
 #include <platform/bios/bal/mmap.h>
 #include <bal/tables.h>
+#include <bal/vbe.h>
 
 struct bios_console_dev bios_console;
 
@@ -47,6 +48,7 @@ void __start(struct bios_service_table *pbios_services)
     /* Initialize the memory map, find all the tables. */
     mmap_init();
     tables_init();
+    vbe_init();
 
     /*gd_memory_map_entry mmap[100]; size_t nentries = 100, key = 0;
     mmap_get(&mmap, nentries, &nentries, &key);

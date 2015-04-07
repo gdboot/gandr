@@ -18,6 +18,9 @@
 #include <gd_queue.h>
 #include <stdlib.h>
 #include <string.h>
+#include <bal/device/fb.h>
+
+struct fb_dev fb;
 
 volatile struct vbe_info_block vbe_info_block;
 
@@ -117,6 +120,7 @@ void vbe_init()
         return;
 
     // Add VBE modes to the mode list.
+    /*struct mode_info new_mode;*/
     for (uint16_t *mode_identifiers = rm_ptr_from_far(vbe_info_block.video_modes_ptr);
          *mode_identifiers != 0xFFFF; mode_identifiers++) {
         // Get mode information.
@@ -253,6 +257,7 @@ void vbe_init()
             }
         }
 
+        new_mode.depth = (new_mode.depth == 15) ? 16 : new_mode.depth;
         if (vbe_info_block.version >= 0x0200 &&
             (vbe_mode_info->attributes & VBE_MODE_ATTR_LINEAR_FRAME_BUFFER_MODE)) {
             new_mode.mode_identifier |= VBE_ID_USE_LFB;
@@ -302,6 +307,8 @@ void vbe_init()
         memcpy(&new_entry->node, &new_mode, sizeof (struct mode_info));
         SLIST_INSERT_HEAD(&modes, new_entry, node);
     }
+
+    //vbe_switch_mode(new_mode);
 }
 
 static struct {
@@ -319,8 +326,8 @@ int vbe_switch_mode(struct mode_info mode)
     struct bios_registers regs = { .eax = 0x4F02, .ebx = mode.mode_identifier };
     bios_int_call(0x10, &regs);
 
-    if (regs.eax & 0xFFFF)
-        return -1; /* Unsuccessful set mode call */
+    if ((regs.eax & 0xFFFF) != 0x004F)
+        return regs.eax; /* Unsuccessful set mode call */
 
     if (mode.depth == 8 && mode.mode_type == PACKED_PIXEL_MODE) {
         uint8_t bits_per_color = 6;
@@ -329,7 +336,7 @@ int vbe_switch_mode(struct mode_info mode)
         bios_int_call(0x10, &regs);
 
         // If successful.
-        if (!(regs.eax & 0xFFFF))
+        if ((regs.eax & 0xFFFF) == 0x004F)
             bits_per_color = (regs.ebx >> 8) & 0xFF;
 
         // Set color ramp according to mask and sizes.
@@ -359,9 +366,10 @@ int vbe_switch_mode(struct mode_info mode)
         regs.edi = rm_offset_from_ptr(&palette);
         bios_int_call(0x10, &regs);
 
-        if (regs.eax & 0xFFFF)
+        if ((regs.eax & 0xFFFF) != 0x004F)
             return -1;
     }
 
+    fb_init(&fb, mode);
     return 0;
 }
