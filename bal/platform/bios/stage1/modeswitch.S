@@ -65,6 +65,9 @@ rm_to_pm16:     pushf
                 cli
                 push %eax
 
+                // Load the GDT in case malcompliant messes with it.
+                lgdt gdtr
+
                 mov %cr0, %eax
                 or pm_cr0_bits, %eax
                 mov %eax, %cr0

@@ -150,4 +150,3 @@ void bios_int_call(uint8_t num, struct bios_registers *regs)
     // Copy back the registers
     memcpy(regs, sp, sizeof *regs);
 }
-

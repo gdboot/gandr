@@ -327,7 +327,7 @@ int vbe_switch_mode(struct mode_info mode)
     bios_int_call(0x10, &regs);
 
     if ((regs.eax & 0xFFFF) != 0x004F)
-        return regs.eax; /* Unsuccessful set mode call */
+        return -1; /* Unsuccessful set mode call */
 
     if (mode.depth == 8 && mode.mode_type == PACKED_PIXEL_MODE) {
         uint8_t bits_per_color = 6;
