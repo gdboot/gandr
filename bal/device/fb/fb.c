@@ -20,6 +20,28 @@
 #include <stdlib.h>
 #include <assert.h>
 
+static inline uint32_t fb_get_pixel_color(struct fb_dev *dev, uint8_t red, uint8_t green, uint8_t blue)
+{
+    red >>= (8 - dev->cur_mode.red_mask_size);
+    green >>= (8 - dev->cur_mode.green_mask_size);
+    blue >>= (8 - dev->cur_mode.blue_mask_size);
+    return (red << dev->cur_mode.red_field_pos) |
+           (green << dev->cur_mode.green_field_pos) |
+           (blue << dev->cur_mode.blue_field_pos);
+}
+
+static inline void fb_reset_foreground_color(struct fb_dev *dev)
+{
+    dev->foreground.red = dev->foreground.green = dev->foreground.blue = 0xFF;
+    dev->foreground.pixel = fb_get_pixel_color(dev, 0xFF, 0xFF, 0xFF);
+}
+
+static inline void fb_reset_background_color(struct fb_dev *dev)
+{
+    dev->background.red = dev->background.green = dev->background.blue = 0x00;
+    dev->background.pixel = 0;
+}
+
 static void fb_clear_buffers(struct fb_dev *dev)
 {
     dev->cur_x = dev->cur_y = 0;
@@ -52,6 +74,82 @@ static void fb_scroll(struct fb_dev *dev)
     }
 }
 
+static void fb_write_char_8(struct fb_dev *dev, char c)
+{
+    uint8_t *dest; uint32_t bytes_per_scanline;
+    if (dev->back_buffer) {
+        bytes_per_scanline = dev->cur_mode.width;
+        dest = (uint8_t*) dev->back_buffer;
+    } else {
+        bytes_per_scanline = dev->cur_mode.bytes_per_scanline;
+        dest = (uint8_t*) dev->front_buffer;
+    }
+
+    dest += (dev->cur_y * font_height * bytes_per_scanline);
+    dest += (dev->cur_x * font_width);
+    uint8_t *char_font = &font_data[(uint8_t)c * font_height];
+    for (int i = 0; i < font_height; i++) {
+        for (int j = 0; j < 8; j++)
+            dest[j] = ((*char_font >> (7 - j)) & 1) ?
+                        dev->foreground.pixel : dev->background.pixel;
+
+        char_font++;
+        dest += bytes_per_scanline;
+    }
+}
+
+static void fb_write_char_16(struct fb_dev *dev, char c)
+{
+    uint16_t *dest; uint32_t bytes_per_scanline;
+    if (dev->back_buffer) {
+        bytes_per_scanline = dev->cur_mode.width * 2;
+        dest = (uint16_t*) dev->back_buffer;
+    } else {
+        bytes_per_scanline = dev->cur_mode.bytes_per_scanline;
+        dest = (uint16_t*) dev->front_buffer;
+    }
+
+    dest += (dev->cur_y * font_height * bytes_per_scanline / 2);
+    dest += (dev->cur_x * font_width);
+    uint8_t *char_font = &font_data[(uint8_t)c * font_height];
+    for (int i = 0; i < font_height; i++) {
+        for (int j = 0; j < 8; j++)
+            dest[j] = ((*char_font >> (7 - j)) & 1) ?
+                        dev->foreground.pixel : dev->background.pixel;
+
+        char_font++;
+        dest += bytes_per_scanline / 2;
+    }
+}
+
+static void fb_write_char_24(struct fb_dev *dev, char c)
+{
+    uint8_t *dest; uint32_t bytes_per_scanline;
+    if (dev->back_buffer) {
+        bytes_per_scanline = dev->cur_mode.width * 3;
+        dest = (uint8_t*) dev->back_buffer;
+    } else {
+        bytes_per_scanline = dev->cur_mode.bytes_per_scanline;
+        dest = (uint8_t*) dev->front_buffer;
+    }
+
+    dest += (dev->cur_y * font_height * bytes_per_scanline);
+    dest += (dev->cur_x * font_width * 3);
+    uint8_t *char_font = &font_data[(uint8_t)c * font_height];
+    for (int i = 0; i < font_height; i++) {
+        for (int j = 0; j < 8; j++) {
+            uint32_t pixel = ((*char_font >> (7 - j)) & 1) ?
+                              dev->foreground.pixel : dev->background.pixel;
+            dest[j * 3] = pixel;
+            dest[j * 3 + 1] = pixel >> 8;
+            dest[j * 3 + 2] = pixel >> 16;
+        }
+
+        char_font++;
+        dest += bytes_per_scanline;
+    }
+}
+
 static void fb_write_char_32(struct fb_dev *dev, char c)
 {
     uint32_t *dest, bytes_per_scanline;
@@ -60,7 +158,7 @@ static void fb_write_char_32(struct fb_dev *dev, char c)
         dest = (uint32_t*) dev->back_buffer;
     } else {
         bytes_per_scanline = dev->cur_mode.bytes_per_scanline;
-        dest = (uint32_t*) dev->front_buffer;  
+        dest = (uint32_t*) dev->front_buffer;
     }
 
     dest += (dev->cur_y * font_height * bytes_per_scanline / 4);
@@ -68,7 +166,8 @@ static void fb_write_char_32(struct fb_dev *dev, char c)
     uint8_t *char_font = &font_data[(uint8_t)c * font_height];
     for (int i = 0; i < font_height; i++) {
         for (int j = 0; j < 8; j++)
-            dest[j] = ((*char_font >> (7 - j)) & 1) ? 0xFFFFFFFF : 0;
+            dest[j] = ((*char_font >> (7 - j)) & 1) ?
+                       dev->foreground.pixel : dev->background.pixel;
 
         char_font++;
         dest += bytes_per_scanline / 4;
@@ -77,13 +176,13 @@ static void fb_write_char_32(struct fb_dev *dev, char c)
 
 void fb_write_char(struct fb_dev *dev, char c)
 {
-    if (dev->cur_mode.depth == 32)
-        fb_write_char_32(dev, c);
-
+    dev->fb_write_char_depth(dev, c);
     if (++dev->cur_x == dev->max_width) {
         dev->cur_x = 0;
-        if (++dev->cur_y == dev->max_height)
+        if (++dev->cur_y == dev->max_height) {
+            dev->cur_y--;
             fb_scroll(dev);
+        }
     }
 }
 
@@ -104,6 +203,23 @@ void fb_init(struct fb_dev *dev, struct mode_info mode)
     //dev->back_buffer = (uint8_t *) malloc(dev->cur_mode.width * dev->cur_mode.height * dev->cur_mode.depth / 8);
     dev->back_buffer = 0;
     dev->front_buffer = (uint8_t *) (uintptr_t) dev->cur_mode.lfb_address;
-    
+
+    switch (dev->cur_mode.depth) {
+        case 8:
+            dev->fb_write_char_depth = &fb_write_char_8;
+            break;
+        case 16:
+            dev->fb_write_char_depth = &fb_write_char_16;
+            break;
+        case 24:
+            dev->fb_write_char_depth = &fb_write_char_24;
+            break;
+        case 32:
+            dev->fb_write_char_depth = &fb_write_char_32;
+            break;
+    }
+
+    fb_reset_background_color(dev);
+    fb_reset_foreground_color(dev);
     fb_clear_buffers(dev);
 }

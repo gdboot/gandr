@@ -58,18 +58,18 @@ void __start(struct bios_service_table *pbios_services)
                mmap[i].type);
     }*/
 
-    extern gd_rsdt_pointer_table rsdt_pointer;
-    extern gd_pc_pointer_table pc_pointer;
+    //extern gd_rsdt_pointer_table rsdt_pointer;
+    //extern gd_pc_pointer_table pc_pointer;
 
-    if (rsdt_pointer.header.length) {
-        printf("RSDT: %x\nXSDT: %llx\n", rsdt_pointer.rsdt_address, rsdt_pointer.xsdt_address);
-    }
+    //if (rsdt_pointer.header.length) {
+    //    printf("RSDT: %x\nXSDT: %llx\n", rsdt_pointer.rsdt_address, rsdt_pointer.xsdt_address);
+    //}
 
-    if (pc_pointer.header.length) {
-        printf("MPS: %c%c%c%c\nSMBIOS: %x\n", pc_pointer.mpfp.signature[0],
-                                              pc_pointer.mpfp.signature[1],
-                                              pc_pointer.mpfp.signature[2],
-                                              pc_pointer.mpfp.signature[3], pc_pointer.smbios_entry_point_address);
-    }
+    //if (pc_pointer.header.length) {
+    //    printf("MPS: %c%c%c%c\nSMBIOS: %x\n", pc_pointer.mpfp.signature[0],
+    //                                          pc_pointer.mpfp.signature[1],
+    //                                          pc_pointer.mpfp.signature[2],
+    //                                          pc_pointer.mpfp.signature[3], pc_pointer.smbios_entry_point_address);
+    //}
     for(;;);
 }

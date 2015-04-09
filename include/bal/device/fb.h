@@ -57,6 +57,11 @@ enum mode_type {
     VGA_TEXT_MODE               = 2
 };
 
+struct pixel_color {
+    uint8_t red, green, blue;
+    uint32_t pixel;
+};
+
 struct fb_dev {
     struct gd_device dev;
     struct mode_info cur_mode;
@@ -66,6 +71,10 @@ struct fb_dev {
 
     uint8_t *back_buffer, *front_buffer;
     uint32_t back_buffer_start; /* treat back buffer as circular buffer */
+
+    struct pixel_color foreground, background;
+
+    void (*fb_write_char_depth)(struct fb_dev*, char c);
 };
 
 void fb_init(struct fb_dev *dev, struct mode_info mode);

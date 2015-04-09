@@ -120,7 +120,7 @@ void vbe_init()
         return;
 
     // Add VBE modes to the mode list.
-    /*struct mode_info new_mode;*/
+    struct mode_info new_mode;
     for (uint16_t *mode_identifiers = rm_ptr_from_far(vbe_info_block.video_modes_ptr);
          *mode_identifiers != 0xFFFF; mode_identifiers++) {
         // Get mode information.
@@ -137,7 +137,7 @@ void vbe_init()
             continue;
 
         struct vbe_mode_info* vbe_mode_info = (struct vbe_mode_info*)&scratch_buffer;
-        struct mode_info new_mode; memset(&new_mode, 0, sizeof new_mode);
+        /*struct mode_info new_mode;*/ memset(&new_mode, 0, sizeof new_mode);
         if (!(vbe_mode_info->attributes & VBE_MODE_ATTR_SUPPORTED))
             continue;
 
@@ -306,9 +306,11 @@ void vbe_init()
         // Add to list.
         memcpy(&new_entry->node, &new_mode, sizeof (struct mode_info));
         SLIST_INSERT_HEAD(&modes, new_entry, node);
+
+        if (new_mode.width > 800 && new_mode.depth == 32) break;
     }
 
-    //vbe_switch_mode(new_mode);
+    vbe_switch_mode(new_mode);
 }
 
 static struct {
@@ -371,5 +373,8 @@ int vbe_switch_mode(struct mode_info mode)
     }
 
     fb_init(&fb, mode);
+    //for (int i = 0; i < 256; i++)
+        //fb_write_char(&fb, (char)'A');
+
     return 0;
 }
