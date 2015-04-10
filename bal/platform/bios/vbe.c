@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <bal/device/fb.h>
+#include <bal/portio.h>
 
 struct fb_dev fb;
 
@@ -342,7 +343,7 @@ int vbe_switch_mode(struct mode_info mode)
             bits_per_color = (regs.ebx >> 8) & 0xFF;
 
         // Set color ramp according to mask and sizes.
-        for (uint32_t i = 0; i < 256; i++) {
+        for (int i = 0; i < 256; i++) {
             palette[i].blue = (i >> mode.blue_field_pos) & ((1 << mode.blue_mask_size) - 1);
             // Just in case some weird palette size.
             palette[i].blue <<= (8 - mode.blue_mask_size);
@@ -361,15 +362,26 @@ int vbe_switch_mode(struct mode_info mode)
             palette[i].unused = 0;
         }
 
-        regs.eax = 0x4F09; regs.ebx = 0x80; /* set palette data during vertical retrace */
-        regs.ecx = 256; /* number of registers to update */
-        regs.edx = 0; /* to start from register 0 */
-        regs.es = rm_seg_from_ptr(&palette);
-        regs.edi = rm_offset_from_ptr(&palette);
-        bios_int_call(0x10, &regs);
+        if (mode.mode_attributes & ATTR_VGA_COMPATIBLE) {
+            outb(0x3C6, 0xFF);
+            outb(0x3C8, 0x00);
 
-        if ((regs.eax & 0xFFFF) != 0x004F)
-            return -1;
+            for (int i = 0; i < 256; i++) {
+                outb(0x3C9, palette[i].red);
+                outb(0x3C9, palette[i].green);
+                outb(0x3C9, palette[i].blue);
+            }
+        } else {
+            regs.eax = 0x4F09; regs.ebx = 0x80; /* set palette data during vertical retrace */
+            regs.ecx = 256; /* number of registers to update */
+            regs.edx = 0; /* to start from register 0 */
+            regs.es = rm_seg_from_ptr(&palette);
+            regs.edi = rm_offset_from_ptr(&palette);
+            bios_int_call(0x10, &regs);
+
+            if ((regs.eax & 0xFFFF) != 0x004F)
+                return -1;
+        }
     }
 
     fb_init(&fb, mode);
