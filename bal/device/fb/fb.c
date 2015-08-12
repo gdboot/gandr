@@ -66,20 +66,14 @@ static inline void memset_pixel(struct fb_dev *dev, void *dest, uint32_t pixel, 
 
 static inline void memcpy_pixel(struct fb_dev *dev, void* dest, const void* src, size_t n)
 {
-    uint8_t *d = dest; const uint8_t* s = src;
     switch (dev->cur_mode.depth) {
         case 8:
             memcpy8(dest, src, n); break;
         case 16:
             memcpy16(dest, src, n); break;
         case 24:
-            for (size_t i = 0; i < n; i++) {
-                d[3 * i + 0] = s[3 * i + 0];
-                d[3 * i + 1] = s[3 * i + 1];
-                d[3 * i + 2] = s[3 * i + 2];
-            }
-
-            break;
+            memcpy16(dest, src, n * 3 / 2);
+            memcpy8((uint8_t*) dest + n * 3 / 2, (uint8_t*) src + n * 3 / 2, 3 * n - 2 * (n * 3 / 2)); break;
         case 32:
             memcpy32(dest, src, n); break;
     }
@@ -310,12 +304,25 @@ static void fb_write_char_32(struct fb_dev *dev, char c)
 
 static void fb_write_char(struct fb_dev *dev, char c)
 {
-    dev->fb_write_char_depth(dev, c);
-    fb_line_dirty(dev, dev->cur_y);
-    if (++dev->cur_x == dev->max_width) {
-        dev->cur_x = 0;
-        if (dev->cur_y == dev->max_height - 1) fb_scroll(dev);
-        else dev->cur_y++;
+    switch (c) {
+        case '\n':
+            if (dev->cur_y == dev->max_height - 1) fb_scroll(dev);
+            else dev->cur_y++;
+        case '\r':
+            dev->cur_x = 0;
+            break;
+        case '\t':
+            dev->cur_x += 8 - (dev->cur_x % 8);
+            if (dev->cur_x >= dev->max_width) dev->cur_x = dev->max_width - 1;
+            break;
+        default:
+            dev->fb_write_char_depth(dev, c);
+            fb_line_dirty(dev, dev->cur_y);
+            if (++dev->cur_x == dev->max_width) {
+                dev->cur_x = 0;
+                if (dev->cur_y == dev->max_height - 1) fb_scroll(dev);
+                else dev->cur_y++;
+            }
     }
 }
 
@@ -325,22 +332,7 @@ static int fb_write(struct fb_dev *dev, const void *buf, size_t sz, size_t *wrot
 
     for (size_t i = 0; i < sz; i++) {
         unsigned char c = cbuf[i];
-
-        switch (c) {
-            case '\r':
-                continue;
-            case '\n':
-                dev->cur_x = 0;
-                if (dev->cur_y == dev->max_height - 1) fb_scroll(dev);
-                else dev->cur_y++;
-                break;
-            case '\t':
-                dev->cur_x += 8 - (dev->cur_x % 8);
-                if (dev->cur_x >= dev->max_width) dev->cur_x = dev->max_width - 1;
-                break;
-            default:
-                fb_write_char(dev, c);
-        }
+        fb_write_char(dev, c);
     }
 
     // If there's a dirty backbuffer, copy to frontbuffer.

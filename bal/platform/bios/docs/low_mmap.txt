@@ -6,4 +6,4 @@
 
     0x8000 -> 0xBFFF                Paging structures (x86_64)
     0xC000 -> 0xFFFF                BAL stack
-    0x10000 -> 0x1????              BAL
+    0x10000 -> 0x2????              BAL

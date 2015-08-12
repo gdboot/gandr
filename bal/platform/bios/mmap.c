@@ -269,5 +269,13 @@ void mmap_init()
         .size = 0x1000,
         .type = gd_unusable_memory
     };
-    mmap_add_entry(low_mem);
+
+    // TODO: make this proper.
+    gd_memory_map_entry gandr_mem = {
+        .physical_start = 0x8000,
+        .size = (0x30000 - 0x8000),
+        .type = gd_loader_code
+    };
+
+    mmap_add_entry(low_mem); mmap_add_entry(gandr_mem);
 }
