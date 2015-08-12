@@ -308,7 +308,7 @@ void vbe_init()
         memcpy(&new_entry->node, &new_mode, sizeof (struct mode_info));
         SLIST_INSERT_HEAD(&modes, new_entry, node);
 
-        if (new_mode.width > 800 && new_mode.depth == 32) break;
+        if (new_mode.width > 700 && new_mode.depth == 32) break;
     }
 
     vbe_switch_mode(new_mode);

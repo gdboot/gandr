@@ -57,6 +57,10 @@ enum mode_type {
     VGA_TEXT_MODE               = 2
 };
 
+enum flags {
+    CONTIG_SCANLINES            = (1 << 0)
+};
+
 struct pixel_color {
     uint8_t red, green, blue;
     uint32_t pixel;
@@ -70,8 +74,10 @@ struct fb_dev {
     uint32_t cur_x, cur_y;
 
     uint8_t *back_buffer, *front_buffer;
-    uint32_t back_buffer_start; /* treat back buffer as circular buffer */
+    uint32_t back_buffer_start; /*! treat back buffer as circular buffer */
+    uint32_t front_dirty_start, front_dirty_end; /*! char lines dirty, not inclusive of end */
 
+    uint32_t flags;
     struct pixel_color foreground, background;
 
     void (*fb_write_char_depth)(struct fb_dev*, char c);
