@@ -23,42 +23,42 @@
 /*! memset 8-bitwise. */
 static inline void* memset8(void *dest, uint8_t c, size_t n)
 {
-    if (n) __asm__ __volatile__("rep stosb" :: "c"(n), "D"(dest), "a"((uint32_t)c));
+    if (n) __asm__ __volatile__("rep stosb" :: "c"(n), "D"(dest), "a"((uint32_t)c) : "memory");
     return dest;
 }
 
 /*! memset 16-bitwise. */
 static inline void* memset16(void *dest, uint16_t c, size_t n)
 {
-    if (n) __asm__ __volatile__("rep stosw" :: "c"(n), "D"(dest), "a"((uint32_t)c));
+    if (n) __asm__ __volatile__("rep stosw" :: "c"(n), "D"(dest), "a"((uint32_t)c) : "memory");
     return dest;
 }
 
 /*! memset 32-bitwise. */
 static inline void* memset32(void *dest, uint32_t c, size_t n)
 {
-    if (n) __asm__ __volatile__("rep stosl" :: "c"(n), "D"(dest), "a"(c));
+    if (n) __asm__ __volatile__("rep stosl" :: "c"(n), "D"(dest), "a"(c) : "memory");
     return dest;
 }
 
 /*! memcpy 8-bitwise. */
 static inline void* memcpy8(void *dest, const void* src, size_t n)
 {
-    if (n) __asm__ __volatile__("rep movsb" :: "c"(n), "D"(dest), "S"(src));
+    if (n) __asm__ __volatile__("rep movsb" :: "c"(n), "D"(dest), "S"(src) : "memory");
     return dest;
 }
 
 /*! memcpy 16-bitwise. */
 static inline void* memcpy16(void *dest, const void* src, size_t n)
 {
-    if (n) __asm__ __volatile__("rep movsw" :: "c"(n), "D"(dest), "S"(src));
+    if (n) __asm__ __volatile__("rep movsw" :: "c"(n), "D"(dest), "S"(src) : "memory");
     return dest;
 }
 
 /*! memscpy 32-bitwise. */
 static inline void* memcpy32(void *dest, const void* src, size_t n)
 {
-    if (n) __asm__ __volatile__("rep movsl" :: "c"(n), "D"(dest), "S"(src));
+    if (n) __asm__ __volatile__("rep movsl" :: "c"(n), "D"(dest), "S"(src) : "memory");
     return dest;
 }
 
