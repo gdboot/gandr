@@ -16,7 +16,6 @@
 #include <gd_bal.h>
 #include <bal/device/fb.h>
 #include <bal/device/font_data.h>
-#include <arch/string.h>
 #include <string.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -45,37 +44,26 @@ static inline void fb_reset_background_color(struct fb_dev *dev)
 
 static inline void memset_pixel(struct fb_dev *dev, void *dest, uint32_t pixel, size_t n)
 {
-    uint8_t *d = dest;
+    uint8_t* d8 = dest; uint16_t* d16 = dest; uint32_t* d32 = dest;
     switch (dev->cur_mode.depth) {
         case 8:
-            memset8(dest, pixel, n); break;
+            memset(dest, pixel, n); break;
         case 16:
-            memset16(dest, pixel, n); break;
+            for (size_t i = 0; i < n; i++)
+                d16[i] = pixel & 0xFFFF;
+
+            break;
         case 24:
             for (size_t i = 0; i < n; i++) {
-                d[3 * i + 0] = pixel & 0xFF;
-                d[3 * i + 1] = (pixel >> 8) & 0xFF;
-                d[3 * i + 2] = (pixel >> 16) & 0xFF;
+                d8[3 * i + 0] = pixel & 0xFF;
+                d8[3 * i + 1] = (pixel >> 8) & 0xFF;
+                d8[3 * i + 2] = (pixel >> 16) & 0xFF;
             }
 
             break;
         case 32:
-            memset32(dest, pixel, n); break;
-    }
-}
-
-static inline void memcpy_pixel(struct fb_dev *dev, void* dest, const void* src, size_t n)
-{
-    switch (dev->cur_mode.depth) {
-        case 8:
-            memcpy8(dest, src, n); break;
-        case 16:
-            memcpy16(dest, src, n); break;
-        case 24:
-            memcpy16(dest, src, n * 3 / 2);
-            memcpy8((uint8_t*) dest + n * 3 / 2, (uint8_t*) src + n * 3 / 2, 3 * n - 2 * (n * 3 / 2)); break;
-        case 32:
-            memcpy32(dest, src, n); break;
+            for (size_t i = 0; i < n; i++)
+                d32[i] = pixel;
     }
 }
 
@@ -90,20 +78,20 @@ static void fb_render(struct fb_dev *dev)
         size_t char_line = font_height * dev->cur_mode.bytes_per_scanline;
         if (start < end) {
             // Doesn't wrap around.
-            memcpy_pixel(dev, (uint8_t*) dev->front_buffer + dev->front_dirty_start * char_line,
-                         (uint8_t*) dev->back_buffer + start * char_line,
-                         (end - start) * char_line * 8 / dev->cur_mode.depth);
+            memcpy((uint8_t*) dev->front_buffer + dev->front_dirty_start * char_line,
+                   (uint8_t*) dev->back_buffer + start * char_line,
+                   (end - start) * char_line);
         } else {
             // Wraps around.
             // To end.
-            memcpy_pixel(dev, (uint8_t*) dev->front_buffer + dev->front_dirty_start * char_line,
-                         (uint8_t*) dev->back_buffer + start * char_line,
-                         (dev->max_height - dev->back_buffer_start) * char_line * 8 / dev->cur_mode.depth);
+            memcpy((uint8_t*) dev->front_buffer + dev->front_dirty_start * char_line,
+                   (uint8_t*) dev->back_buffer + start * char_line,
+                   (dev->max_height - dev->back_buffer_start) * char_line);
             // From beginning.
-            memcpy_pixel(dev, (uint8_t*) dev->front_buffer +
-                         (dev->front_dirty_start + dev->max_height - dev->back_buffer_start) * char_line,
-                         (uint8_t*) dev->back_buffer,
-                         end * char_line * 8 / dev->cur_mode.depth);
+            memcpy((uint8_t*) dev->front_buffer +
+                             (dev->front_dirty_start + dev->max_height - dev->back_buffer_start) * char_line,
+                   dev->back_buffer,
+                   end * char_line);
         }
     } else {
         // Copy per scanline.
@@ -113,27 +101,27 @@ static void fb_render(struct fb_dev *dev)
             for (int i = start; i < end; i++)
                 // Copy pixel line-wise for each charline.
                 for (int j = 0; j < font_height; j++)
-                    memcpy_pixel(dev, (uint8_t*) dev->front_buffer +
+                    memcpy((uint8_t*) dev->front_buffer +
                                        ((dev->front_dirty_start + i) * font_height + j) * dev->cur_mode.bytes_per_scanline,
-                                 (uint8_t*) dev->back_buffer + ((start + i) * font_height + j) * char_line,
-                                 char_line * 8 / dev->cur_mode.depth);
+                           (uint8_t*) dev->back_buffer + ((start + i) * font_height + j) * char_line,
+                           char_line);
         } else {
             // If it does wrap around, copy first to the end.
             for (unsigned i = 0; i < (dev->max_height - dev->back_buffer_start); i++)
                 for (int j = 0; j < font_height; j++)
-                    memcpy_pixel(dev, (uint8_t*) dev->front_buffer +
+                    memcpy((uint8_t*) dev->front_buffer +
                                        ((dev->front_dirty_start + i) * font_height + j) * dev->cur_mode.bytes_per_scanline,
-                                 (uint8_t*) dev->back_buffer + ((start + i) * font_height + j) * char_line,
-                                 char_line * 8 / dev->cur_mode.depth);
+                           (uint8_t*) dev->back_buffer + ((start + i) * font_height + j) * char_line,
+                           char_line);
 
             // Then from beginning to left over portion.
             for (int i = 0; i < end; i++)
                 for (int j = 0; j < font_height; j++)
-                    memcpy_pixel(dev, (uint8_t*) dev->front_buffer +
-                                       ((dev->front_dirty_start + dev->max_height - dev->back_buffer_start + i) * font_height + j)
+                    memcpy((uint8_t*) dev->front_buffer +
+                                    ((dev->front_dirty_start + dev->max_height - dev->back_buffer_start + i) * font_height + j)
                                     * dev->cur_mode.bytes_per_scanline,
-                                 (uint8_t*) dev->back_buffer + (i * font_height + j) * char_line,
-                                 char_line * 8 / dev->cur_mode.depth);
+                           (uint8_t*) dev->back_buffer + (i * font_height + j) * char_line,
+                           char_line);
         }
     }
 }
@@ -177,7 +165,7 @@ static void fb_scroll(struct fb_dev *dev)
         size_t char_line = (font_height * dev->cur_mode.bytes_per_scanline);
 
         if (dev->flags & CONTIG_SCANLINES) {
-            memcpy_pixel(dev, dest, dest + char_line, dev->cur_mode.width * (dev->cur_mode.height - font_height));
+            memcpy(dest, dest + char_line, dev->cur_mode.width * (dev->cur_mode.height - font_height) * dev->cur_mode.depth / 8);
 
             dest += dev->cur_mode.width * (dev->cur_mode.height - font_height) * dev->cur_mode.depth / 8;
             // Clear last line.
@@ -185,7 +173,7 @@ static void fb_scroll(struct fb_dev *dev)
         } else {
             for (unsigned int i = 0; i < dev->max_height - 1; i++) {
                 for (int j = 0; j < font_height; j++, dest += dev->cur_mode.bytes_per_scanline)
-                    memcpy_pixel(dev, dest, dest + char_line, dev->cur_mode.width);
+                    memcpy(dest, dest + char_line, dev->cur_mode.width * dev->cur_mode.depth / 8);
             }
 
             for (int j = 0; j < font_height; j++, dest += dev->cur_mode.bytes_per_scanline)
