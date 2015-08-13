@@ -224,8 +224,8 @@ if ! $(ARCH) {
 
 # All of our toolchains are GCC-alikes
 TOOLSET = gcc ;
-CCFLAGS  += -ffreestanding -g ;
-C++FLAGS += -ffreestanding -g ;
+CCFLAGS  += -ffreestanding -fbuiltin -g ;
+C++FLAGS += -ffreestanding -fbuiltin -g ;
 
 AS         = $(TOOLPREFIX)gcc ;
 AR         = $(TOOLPREFIX)ar cru ;
